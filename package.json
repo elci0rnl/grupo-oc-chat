@@ -6,8 +6,9 @@
   "main": "server-index.js",
   "scripts": {
     "start": "node server-index.js",
-    "build": "echo 'Build completed for Grupo OC'",
-    "postinstall": "npx puppeteer browsers install chrome",
+    "build": "npm run install-chrome",
+    "install-chrome": "npx puppeteer browsers install chrome --path ./chrome",
+    "postinstall": "npm run install-chrome",
     "dev": "nodemon server-index.js",
     "test": "echo 'Tests for Grupo OC chat system'"
   },
