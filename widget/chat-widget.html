@@ -1,0 +1,625 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Grupo OC</title>
+    <style>
+        /* Reset e base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Container do chat */
+        .grupo-oc-chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        /* Botão flutuante */
+        .chat-toggle-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .chat-toggle-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(0,0,0,0.4);
+        }
+
+        .chat-toggle-btn svg {
+            width: 28px;
+            height: 28px;
+            fill: white;
+        }
+
+        /* Indicador de notificação */
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: #ff4757;
+            border-radius: 50%;
+            border: 2px solid white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Container do chat */
+        .chat-container {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            transform: scale(0.8);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .chat-container.active {
+            display: flex;
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* Header do chat */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .chat-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .chat-header .status {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* Área de mensagens */
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .message.bot .message-content {
+            background: white;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        /* Avatar */
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Área de input */
+        .chat-input-area {
+            padding: 15px 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        .input-container {
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            border-radius: 25px;
+            padding: 8px 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 14px;
+            padding: 8px 0;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .send-btn svg {
+            width: 16px;
+            height: 16px;
+            fill: white;
+        }
+
+        /* Formulário de lead */
+        .lead-form {
+            display: none;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .lead-form.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+            font-size: 13px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+            border: 1px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        /* Responsivo */
+        @media (max-width: 768px) {
+            .grupo-oc-chat-widget {
+                bottom: 10px;
+                right: 10px;
+            }
+
+            .chat-container {
+                width: calc(100vw - 20px);
+                height: calc(100vh - 100px);
+                bottom: 70px;
+                right: -10px;
+            }
+        }
+
+        /* Scrollbar customizada */
+        .chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="grupo-oc-chat-widget">
+        <!-- Botão flutuante -->
+        <button class="chat-toggle-btn" onclick="toggleChat()">
+            <svg viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+            <div class="notification-dot"></div>
+        </button>
+
+        <!-- Container do chat -->
+        <div class="chat-container" id="chatContainer">
+            <!-- Header -->
+            <div class="chat-header">
+                <div>
+                    <h3>💬 Grupo OC</h3>
+                    <div class="status">🟢 Online - Respondemos em instantes</div>
+                </div>
+                <button class="close-btn" onclick="toggleChat()">×</button>
+            </div>
+
+            <!-- Mensagens -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot">
+                    <div class="avatar">OC</div>
+                    <div class="message-content">
+                        👋 Olá! Sou o assistente virtual do Grupo OC.<br><br>
+                        Como posso ajudá-lo hoje? Estou aqui para:
+                        <br>• Tirar dúvidas sobre nossos serviços
+                        <br>• Fornecer informações sobre consultoria
+                        <br>• Conectar você com nossa equipe
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulário de lead -->
+            <div class="lead-form" id="leadForm">
+                <h4 style="margin-bottom: 15px; color: #333;">📋 Vamos conversar!</h4>
+                <form id="leadFormData">
+                    <div class="form-group">
+                        <label>Nome completo *</label>
+                        <input type="text" name="nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Telefone</label>
+                        <input type="tel" name="telefone" placeholder="(11) 99999-9999">
+                    </div>
+                    <div class="form-group">
+                        <label>Empresa</label>
+                        <input type="text" name="empresa">
+                    </div>
+                    <div class="form-group">
+                        <label>CNPJ</label>
+                        <input type="text" name="cnpj" placeholder="00.000.000/0000-00">
+                    </div>
+                    <div class="form-group">
+                        <label>Como podemos ajudar?</label>
+                        <textarea name="interesse" placeholder="Descreva sua necessidade..."></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closeForm()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Enviar Solicitação</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div>⏳ Processando...</div>
+            </div>
+
+            <!-- Área de input -->
+            <div class="chat-input-area">
+                <div class="input-container">
+                    <input type="text" class="chat-input" id="chatInput" placeholder="Digite sua mensagem..." onkeypress="handleKeyPress(event)">
+                    <button class="send-btn" onclick="sendMessage()">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração da API
+        const API_BASE = 'SEU_SERVIDOR_AQUI'; // Será substituído
+        let sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+        // Elementos DOM
+        const chatContainer = document.getElementById('chatContainer');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const leadForm = document.getElementById('leadForm');
+        const loading = document.getElementById('loading');
+
+        // Toggle do chat
+        function toggleChat() {
+            chatContainer.classList.toggle('active');
+            if (chatContainer.classList.contains('active')) {
+                chatInput.focus();
+                // Remover notificação
+                document.querySelector('.notification-dot').style.display = 'none';
+            }
+        }
+
+        // Enviar mensagem
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            // Adicionar mensagem do usuário
+            addMessage(message, 'user');
+            chatInput.value = '';
+
+            // Mostrar loading
+            showLoading();
+
+            // Enviar para API
+            fetch(`${API_BASE}/api/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: message,
+                    sessionId: sessionId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    // Adicionar resposta do bot
+                    addMessage(data.reply, 'bot');
+                    
+                    // Verificar se deve abrir formulário
+                    if (data.openForm) {
+                        setTimeout(() => {
+                            showLeadForm();
+                        }, 1000);
+                    }
+                } else {
+                    addMessage('Desculpe, ocorreu um erro. Tente novamente.', 'bot');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Erro:', error);
+                addMessage('Erro de conexão. Verifique sua internet e tente novamente.', 'bot');
+            });
+        }
+
+        // Adicionar mensagem
+        function addMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.innerHTML = text.replace(/\n/g, '<br>');
+            
+            if (sender === 'bot') {
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.textContent = 'OC';
+                messageDiv.appendChild(avatar);
+            }
+            
+            messageDiv.appendChild(content);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll para baixo
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Mostrar formulário
+        function showLeadForm() {
+            leadForm.classList.add('active');
+            chatMessages.style.display = 'none';
+            document.querySelector('.chat-input-area').style.display = 'none';
+        }
+
+        // Fechar formulário
+        function closeForm() {
+            leadForm.classList.remove('active');
+            chatMessages.style.display = 'block';
+            document.querySelector('.chat-input-area').style.display = 'block';
+        }
+
+        // Mostrar/esconder loading
+        function showLoading() {
+            loading.classList.add('active');
+        }
+
+        function hideLoading() {
+            loading.classList.remove('active');
+        }
+
+        // Enter para enviar
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Envio do formulário
+        document.getElementById('leadFormData').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const leadData = Object.fromEntries(formData.entries());
+            
+            // Validação básica
+            if (!leadData.nome || !leadData.email) {
+                alert('Nome e email são obrigatórios!');
+                return;
+            }
+            
+            showLoading();
+            
+            // Enviar lead
+            fetch(`${API_BASE}/api/capture-lead`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(leadData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                if (data.success) {
+                    closeForm();
+                    addMessage('✅ Obrigado! Sua solicitação foi enviada com sucesso. Nossa equipe entrará em contato em breve!', 'bot');
+                    
+                    // Limpar formulário
+                    document.getElementById('leadFormData').reset();
+                } else {
+                    alert('Erro ao enviar solicitação. Tente novamente.');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Erro:', error);
+                alert('Erro de conexão. Tente novamente.');
+            });
+        });
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mostrar notificação após 5 segundos
+            setTimeout(() => {
+                if (!chatContainer.classList.contains('active')) {
+                    document.querySelector('.notification-dot').style.display = 'block';
+                }
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
