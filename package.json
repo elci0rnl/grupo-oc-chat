@@ -1,38 +1,46 @@
 {
-    "version": "0.0.0",
-    "name": "tim-corp-chat",
-    "scripts": {
-        "build": "vite build",
-        "dev:server": "nodemon server/index.js --ignore tim-content.json --ignore database.sqlite --ignore *.log",
-        "dev:client": "vite --host 0.0.0.0 --port 5173",
-        "preview": "vite preview",
-        "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-        "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\""
-    },
-    "devDependencies": {
-        "@types/react": "^18.2.66",
-        "@types/react-dom": "^18.2.22",
-        "@vitejs/plugin-react": "^4.2.1",
-        "eslint": "^8.57.0",
-        "eslint-plugin-react": "^7.34.1",
-        "eslint-plugin-react-hooks": "^4.6.0",
-        "eslint-plugin-react-refresh": "^0.4.6",
-        "vite": "^5.2.0"
-    },
-    "type": "module",
-    "dependencies": {
-        "axios": "^1.11.0",
-        "cheerio": "^1.1.2",
-        "concurrently": "^8.2.2",
-        "cors": "^2.8.5",
-        "dotenv": "^17.2.1",
-        "express": "^4.18.2",
-        "nodemailer": "^7.0.5",
-        "nodemon": "^3.0.1",
-        "openai": "^5.13.1",
-        "puppeteer": "^24.16.2",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0"
-    },
-    "private": true
+  "name": "grupo-oc-chat",
+  "version": "1.0.0",
+  "description": "Sistema de chat inteligente para Grupo OC com IA e scraping",
+  "type": "module",
+  "main": "server-index.js",
+  "scripts": {
+    "start": "node server-index.js",
+    "build": "echo 'Build completed for Grupo OC'",
+    "postinstall": "npx puppeteer browsers install chrome",
+    "dev": "nodemon server-index.js",
+    "test": "echo 'Tests for Grupo OC chat system'"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "puppeteer": "^21.5.2",
+    "openai": "^4.20.1",
+    "nodemailer": "^6.9.7",
+    "cheerio": "^1.0.0-rc.12",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "keywords": [
+    "grupo-oc",
+    "chat",
+    "ia",
+    "scraping",
+    "consultoria",
+    "empresarial"
+  ],
+  "author": "Grupo OC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/elci0rnl/grupo-oc-chat.git"
+  },
+  "private": true
 }
