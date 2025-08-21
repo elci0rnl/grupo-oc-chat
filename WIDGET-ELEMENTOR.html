@@ -1,0 +1,146 @@
+﻿<!-- CHAT GRUPO OC - WIDGET PARA WORDPRESS ELEMENTOR -->
+<div id="grupo-oc-chat-widget"></div>
+
+<script>
+(function() {
+    // ⚠️ ALTERE ESTA URL PARA SEU SERVIDOR ⚠️
+    const SERVIDOR_API = 'https://SEU-SERVIDOR-AQUI.herokuapp.com';
+    
+    const css = \
+        .grupo-oc-chat-widget{position:fixed;bottom:20px;right:20px;z-index:9999;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+        .chat-toggle-btn{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;position:relative}
+        .chat-toggle-btn:hover{transform:scale(1.1)}
+        .chat-toggle-btn svg{width:28px;height:28px;fill:white}
+        .notification-dot{position:absolute;top:-2px;right:-2px;width:12px;height:12px;background:#ff4757;border-radius:50%;border:2px solid white;animation:pulse 2s infinite}
+        @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
+        .chat-container{position:absolute;bottom:80px;right:0;width:350px;height:500px;background:white;border-radius:15px;box-shadow:0 10px 40px rgba(0,0,0,0.3);display:none;flex-direction:column;overflow:hidden;transform:scale(0.8);opacity:0;transition:all 0.3s ease}
+        .chat-container.active{display:flex;transform:scale(1);opacity:1}
+        .chat-header{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+        .chat-header h3{font-size:16px;font-weight:600;margin:0}
+        .close-btn{background:none;border:none;color:white;font-size:20px;cursor:pointer}
+        .chat-messages{flex:1;padding:20px;overflow-y:auto;background:#f8f9fa}
+        .message{margin-bottom:15px;display:flex;align-items:flex-start}
+        .message.user{justify-content:flex-end}
+        .message-content{max-width:80%;padding:12px 16px;border-radius:18px;font-size:14px;line-height:1.4}
+        .message.bot .message-content{background:white;color:#333;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+        .message.user .message-content{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
+        .avatar{width:32px;height:32px;border-radius:50%;margin-right:10px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);display:flex;align-items:center;justify-content:center;color:white;font-size:12px;font-weight:bold}
+        .chat-input-area{padding:15px 20px;background:white;border-top:1px solid #eee}
+        .input-container{display:flex;align-items:center;background:#f8f9fa;border-radius:25px;padding:8px 15px}
+        .chat-input{flex:1;border:none;background:none;outline:none;font-size:14px;padding:8px 0}
+        .send-btn{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);border:none;border-radius:50%;width:35px;height:35px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+        .lead-form{display:none;padding:20px;background:white;margin:10px;border-radius:10px}
+        .lead-form.active{display:block}
+        .form-group{margin-bottom:15px}
+        .form-group label{display:block;margin-bottom:5px;font-weight:600;color:#333;font-size:13px}
+        .form-group input,.form-group textarea{width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;box-sizing:border-box}
+        .form-buttons{display:flex;gap:10px;margin-top:20px}
+        .btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+        .btn-primary{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white}
+        .btn-secondary{background:#f8f9fa;color:#666;border:1px solid #ddd}
+        @media (max-width:768px){.chat-container{width:calc(100vw - 20px);height:calc(100vh - 100px)}}
+    \;
+    
+    const style = document.createElement('style');
+    style.textContent = css;
+    document.head.appendChild(style);
+    
+    const html = \
+        <div class="grupo-oc-chat-widget">
+            <button class="chat-toggle-btn" onclick="GrupoOCChat.toggle()">
+                <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+                <div class="notification-dot" style="display:none"></div>
+            </button>
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-header">
+                    <div><h3>💬 Grupo OC</h3><div>🟢 Online</div></div>
+                    <button class="close-btn" onclick="GrupoOCChat.toggle()">×</button>
+                </div>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message bot">
+                        <div class="avatar">OC</div>
+                        <div class="message-content">👋 Olá! Sou o assistente do Grupo OC. Como posso ajudar?</div>
+                    </div>
+                </div>
+                <div class="lead-form" id="leadForm">
+                    <h4>📋 Vamos conversar!</h4>
+                    <form id="leadFormData">
+                        <div class="form-group"><label>Nome *</label><input type="text" name="nome" required></div>
+                        <div class="form-group"><label>Email *</label><input type="email" name="email" required></div>
+                        <div class="form-group"><label>Telefone</label><input type="tel" name="telefone"></div>
+                        <div class="form-group"><label>Empresa</label><input type="text" name="empresa"></div>
+                        <div class="form-group"><label>Como podemos ajudar?</label><textarea name="interesse"></textarea></div>
+                        <div class="form-buttons">
+                            <button type="button" class="btn btn-secondary" onclick="GrupoOCChat.closeForm()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Enviar</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="chat-input-area">
+                    <div class="input-container">
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Digite sua mensagem...">
+                        <button class="send-btn" onclick="GrupoOCChat.sendMessage()">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    \;
+    
+    document.getElementById('grupo-oc-chat-widget').innerHTML = html;
+    
+    window.GrupoOCChat = {
+        sessionId: 'session_' + Date.now(),
+        toggle: function() {
+            document.getElementById('chatContainer').classList.toggle('active');
+        },
+        sendMessage: function() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            this.addMessage(message, 'user');
+            input.value = '';
+            fetch(SERVIDOR_API + '/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: message, sessionId: this.sessionId})
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    this.addMessage(data.reply, 'bot');
+                    if (data.openForm) setTimeout(() => this.showLeadForm(), 1000);
+                }
+            });
+        },
+        addMessage: function(text, sender) {
+            const div = document.createElement('div');
+            div.className = 'message ' + sender;
+            div.innerHTML = sender === 'bot' ? 
+                '<div class="avatar">OC</div><div class="message-content">' + text + '</div>' :
+                '<div class="message-content">' + text + '</div>';
+            document.getElementById('chatMessages').appendChild(div);
+        },
+        showLeadForm: function() {
+            document.getElementById('leadForm').classList.add('active');
+        },
+        closeForm: function() {
+            document.getElementById('leadForm').classList.remove('active');
+        }
+    };
+    
+    document.getElementById('leadFormData').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const leadData = Object.fromEntries(formData.entries());
+        fetch(SERVIDOR_API + '/api/capture-lead', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(leadData)
+        }).then(r => r.json()).then(data => {
+            if (data.success) {
+                GrupoOCChat.closeForm();
+                GrupoOCChat.addMessage('✅ Obrigado! Entraremos em contato em breve!', 'bot');
+                this.reset();
+            }
+        });
+    });
+})();
+</script>
