@@ -1438,6 +1438,7 @@ app.get('/widget', (req, res) => {
 </div>
 
     <script>
+    // ===== VARIÁVEIS GLOBAIS =====
     const chatContainer = document.getElementById('chatContainer');
     const chatButton = document.getElementById('chatButton');
     const chatMessages = document.getElementById('chatMessages');
@@ -1447,6 +1448,7 @@ app.get('/widget', (req, res) => {
     let chatOpen = false;
     let leadFormOpen = false;
 
+    // ===== FUNÇÕES DO CHAT =====
     function toggleChat() {
         chatOpen = !chatOpen;
         
@@ -1462,40 +1464,75 @@ app.get('/widget', (req, res) => {
         }
     }
 
-    // ===== FUNÇÕES DO FORMULÁRIO DE LEADS - CORRIGIDAS =====
-    function openLeadForm() {
-        console.log('🎯 Tentando abrir formulário de leads...');
+    function addMessage(content, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + (isUser ? 'user' : 'bot');
         
-        if (leadFormOpen) {
-            console.log('⚠️ Formulário já está aberto');
-            return;
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = content;
+        
+        messageDiv.appendChild(contentDiv);
+        chatMessages.appendChild(messageDiv);
+        
+        const welcome = chatMessages.querySelector('.welcome-message');
+        if (welcome) {
+            welcome.remove();
         }
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTyping() {
+        typing.style.display = 'block';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTyping() {
+        typing.style.display = 'none';
+    }
+
+    // ===== FUNÇÕES DO FORMULÁRIO - VERSÃO GARANTIDA =====
+    function openLeadForm() {
+        console.log('🎯 FORÇANDO ABERTURA DO FORMULÁRIO...');
         
         leadFormOpen = true;
+        
+        // Buscar elemento
         const overlay = document.getElementById('leadFormOverlay');
+        console.log('• Elemento encontrado:', !!overlay);
         
-        if (!overlay) {
-            console.error('❌ Elemento leadFormOverlay não encontrado!');
-            return;
+        if (overlay) {
+            // FORÇAR DISPLAY
+            overlay.style.display = 'flex';
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.zIndex = '10000';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            
+            console.log('✅ FORMULÁRIO FORÇADO A APARECER!');
+            
+            // Focar no primeiro campo
+            setTimeout(() => {
+                const nomeField = document.getElementById('leadNome');
+                if (nomeField) {
+                    nomeField.focus();
+                }
+            }, 500);
+        } else {
+            console.error('❌ ELEMENTO leadFormOverlay NÃO ENCONTRADO!');
+            alert('TESTE: Formulário deveria abrir agora!');
         }
-        
-        console.log('✅ Abrindo formulário de leads...');
-        overlay.style.display = 'flex';
-        
-        // Focar no primeiro campo
-        setTimeout(() => {
-            const nomeField = document.getElementById('leadNome');
-            if (nomeField) {
-                nomeField.focus();
-            }
-        }, 300);
     }
 
     function closeLeadForm() {
-        console.log('🔒 Fechando formulário de leads...');
+        console.log('🔒 Fechando formulário...');
         leadFormOpen = false;
-        const overlay = document.getElementById('leadFormOverlay');
         
+        const overlay = document.getElementById('leadFormOverlay');
         if (overlay) {
             overlay.style.display = 'none';
         }
@@ -1514,8 +1551,87 @@ app.get('/widget', (req, res) => {
         if (success) success.style.display = 'none';
     }
 
-    // Fechar formulário clicando fora
-    document.addEventListener('DOMContentLoaded', function() {
+    // ===== FUNÇÃO DE ENVIO DE MENSAGEM =====
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, true);
+        messageInput.value = '';
+        showTyping();
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            hideTyping();
+            
+            console.log('📊 RESPOSTA COMPLETA:', data);
+            
+            if (data.success) {
+                addMessage(data.reply);
+                
+                // ===== VERIFICAÇÃO SUPER SIMPLES =====
+                console.log('🔍 Verificando openForm:', data.openForm);
+                
+                if (data.openForm) {
+                    console.log('🎯 DEVE ABRIR FORMULÁRIO! Abrindo em 1 segundo...');
+                    setTimeout(() => {
+                        openLeadForm();
+                    }, 1000);
+                } else {
+                    console.log('ℹ️ Não precisa abrir formulário');
+                }
+            } else {
+                addMessage('Desculpe, ocorreu um erro. Tente novamente.');
+            }
+        } catch (error) {
+            hideTyping();
+            addMessage('Erro de conexão. Verifique sua internet e tente novamente.');
+            console.error('❌ Erro:', error);
+        }
+    }
+
+    // ===== EVENT LISTENERS =====
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    // ===== INICIALIZAÇÃO QUANDO PÁGINA CARREGAR =====
+    window.addEventListener('load', function() {
+        console.log('🚀 WIDGET CARREGADO!');
+        
+        // Verificar se elementos existem
+        const overlay = document.getElementById('leadFormOverlay');
+        const form = document.getElementById('leadForm');
+        
+        console.log('🔍 VERIFICAÇÃO DE ELEMENTOS:');
+        console.log('• leadFormOverlay:', !!overlay);
+        console.log('• leadForm:', !!form);
+        
+        if (overlay && form) {
+            console.log('✅ TODOS OS ELEMENTOS ENCONTRADOS!');
+            
+            // Configurar event listeners do formulário
+            setupFormListeners();
+        } else {
+            console.error('❌ ELEMENTOS DO FORMULÁRIO NÃO ENCONTRADOS!');
+        }
+    });
+
+    // ===== CONFIGURAR FORMULÁRIO =====
+    function setupFormListeners() {
+        console.log('⚙️ Configurando listeners do formulário...');
+        
+        // Fechar clicando fora
         const overlay = document.getElementById('leadFormOverlay');
         if (overlay) {
             overlay.addEventListener('click', function(e) {
@@ -1524,14 +1640,13 @@ app.get('/widget', (req, res) => {
                 }
             });
         }
-    });
 
-    // Submissão do formulário
-    document.addEventListener('DOMContentLoaded', function() {
+        // Submissão do formulário
         const form = document.getElementById('leadForm');
         if (form) {
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
+                console.log('📤 Enviando formulário...');
                 
                 const formData = new FormData(this);
                 const leadData = {
@@ -1562,11 +1677,9 @@ app.get('/widget', (req, res) => {
                     const result = await response.json();
                     
                     if (result.success) {
-                        // Mostrar sucesso
                         document.getElementById('leadFormLoading').style.display = 'none';
                         document.getElementById('leadFormSuccess').style.display = 'block';
                         
-                        // Fechar automaticamente após 5 segundos
                         setTimeout(() => {
                             closeLeadForm();
                         }, 5000);
@@ -1575,20 +1688,16 @@ app.get('/widget', (req, res) => {
                     }
                     
                 } catch (error) {
-                    console.error('Erro ao enviar lead:', error);
+                    console.error('❌ Erro ao enviar lead:', error);
                     alert('Erro ao enviar solicitação. Tente novamente.');
                     
-                    // Voltar ao formulário
                     document.getElementById('leadFormLoading').style.display = 'none';
                     document.getElementById('leadForm').style.display = 'block';
                 }
             });
         }
-    });
 
-    // Máscaras para campos
-    document.addEventListener('DOMContentLoaded', function() {
-        // Máscara para telefone
+        // Máscaras
         const telefoneField = document.getElementById('leadTelefone');
         if (telefoneField) {
             telefoneField.addEventListener('input', function(e) {
@@ -1603,7 +1712,6 @@ app.get('/widget', (req, res) => {
             });
         }
 
-        // Máscara para CNPJ
         const cnpjField = document.getElementById('leadCNPJ');
         if (cnpjField) {
             cnpjField.addEventListener('input', function(e) {
@@ -1612,108 +1720,14 @@ app.get('/widget', (req, res) => {
                 e.target.value = value;
             });
         }
-    });
-
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-
-    function addMessage(content, isUser = false) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = 'message ' + (isUser ? 'user' : 'bot');
         
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'message-content';
-        contentDiv.textContent = content;
-        
-        messageDiv.appendChild(contentDiv);
-        chatMessages.appendChild(messageDiv);
-        
-        const welcome = chatMessages.querySelector('.welcome-message');
-        if (welcome) {
-            welcome.remove();
-        }
-        
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        console.log('✅ Listeners do formulário configurados!');
     }
 
-    function showTyping() {
-        typing.style.display = 'block';
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function hideTyping() {
-        typing.style.display = 'none';
-    }
-
-    async function sendMessage() {
-        const message = messageInput.value.trim();
-        if (!message) return;
-
-        addMessage(message, true);
-        messageInput.value = '';
-        showTyping();
-
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ message: message })
-            });
-
-            const data = await response.json();
-            hideTyping();
-            
-            console.log('📊 Resposta do servidor:', data);
-            
-            if (data.success) {
-                addMessage(data.reply);
-                
-                // ===== VERIFICAÇÃO CORRIGIDA PARA ABRIR FORMULÁRIO =====
-                console.log('🔍 Verificando se deve abrir formulário...');
-                console.log('• openForm:', data.openForm);
-                console.log('• leadFormOpen:', leadFormOpen);
-                
-                if (data.openForm === true && !leadFormOpen) {
-                    console.log('🎯 Abrindo formulário de leads em 1 segundo...');
-                    setTimeout(() => {
-                        openLeadForm();
-                    }, 1000);
-                } else if (data.openForm === true && leadFormOpen) {
-                    console.log('⚠️ Formulário já está aberto, não abrindo novamente');
-                } else {
-                    console.log('ℹ️ Não é necessário abrir formulário');
-                }
-            } else {
-                addMessage('Desculpe, ocorreu um erro. Tente novamente.');
-            }
-        } catch (error) {
-            hideTyping();
-            addMessage('Erro de conexão. Verifique sua internet e tente novamente.');
-            console.error('Erro:', error);
-        }
-    }
-
-    // Inicialização do widget
-    window.onload = function() {
-        console.log('🚀 Widget Chat Grupo OC carregado!');
-        console.log('🔍 Verificando elementos do formulário...');
-        
-        const overlay = document.getElementById('leadFormOverlay');
-        const form = document.getElementById('leadForm');
-        
-        console.log('• leadFormOverlay:', overlay ? 'Encontrado' : 'NÃO ENCONTRADO');
-        console.log('• leadForm:', form ? 'Encontrado' : 'NÃO ENCONTRADO');
-        
-        if (!overlay || !form) {
-            console.error('❌ Elementos do formulário não encontrados!');
-        } else {
-            console.log('✅ Todos os elementos do formulário encontrados');
-        }
+    // ===== FUNÇÃO DE TESTE GLOBAL =====
+    window.testarFormulario = function() {
+        console.log('🧪 TESTE MANUAL DO FORMULÁRIO');
+        openLeadForm();
     };
 </script>
 </body>
@@ -2207,6 +2221,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
