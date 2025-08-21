@@ -1,6 +1,6 @@
 {
   "name": "grupo-oc-chat",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Sistema de chat inteligente para Grupo OC",
   "type": "module",
   "main": "server-index.js",
@@ -12,7 +12,6 @@
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "puppeteer": "^21.5.2",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
     "openai": "^4.20.1",
@@ -25,7 +24,8 @@
     "grupo-oc",
     "chat",
     "ia",
-    "consultoria"
+    "consultoria",
+    "scraping-leve"
   ],
   "author": "Grupo OC",
   "license": "MIT",
