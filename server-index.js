@@ -201,50 +201,196 @@ let ultimoScraping = null;
 // ===== SISTEMA AVANÇADO DE CAPTAÇÃO DE LEADS ===== 
 // 👆 ADICIONAR AQUI (APÓS A LINHA ultimoScraping)
 
-// Palavras-chave que indicam interesse comercial
+// Palavras-chave que indicam interesse comercial - EXPANDIDAS
 const palavrasChaveInteresse = [
     // Interesse direto
     'quero', 'preciso', 'gostaria', 'interesse', 'contratar', 'solicitar',
     'orçamento', 'proposta', 'cotação', 'valor', 'preço', 'custo',
+    'contratar', 'contratação', 'contrato',
     
     // Serviços específicos
     'telefonia', 'internet', 'fibra', 'plano de saúde', 'convênio',
     'seo', 'google ads', 'marketing', 'site', 'digital',
+    'telecom', 'comunicação', 'dados móveis',
     
     // Ações comerciais
     'falar com', 'conversar', 'reunião', 'apresentação', 'demonstração',
     'contato', 'ligar', 'whatsapp', 'email', 'vendas',
+    'comercial', 'atendimento', 'suporte',
     
     // Urgência
     'urgente', 'rápido', 'hoje', 'agora', 'imediato',
     
     // Decisão
-    'decidir', 'escolher', 'comparar', 'avaliar', 'analisar'
+    'decidir', 'escolher', 'comparar', 'avaliar', 'analisar',
+    
+    // Frases específicas
+    'como contratar', 'quero contratar', 'interesse em',
+    'preciso de', 'gostaria de', 'como funciona',
+    'quanto custa', 'qual o valor', 'como solicitar'
 ];
 
-// Função melhorada para detectar interesse
-function detectarInteresseComercial(mensagemUsuario, respostaIA) {
-    const textoCompleto = `${mensagemUsuario} ${respostaIA}`.toLowerCase();
+// ===== SISTEMA DE DESPEDIDA INTELIGENTE =====
+
+// Palavras-chave que indicam agradecimento
+const palavrasAgradecimento = [
+    'obrigado', 'obrigada', 'valeu', 'muito obrigado', 'muito obrigada',
+    'agradeço', 'grato', 'grata', 'thanks', 'thank you',
+    'brigado', 'brigada', 'vlw', 'valeu mesmo'
+];
+
+// Palavras-chave que indicam despedida/finalização
+const palavrasDespedida = [
+    'tchau', 'até logo', 'até mais', 'até breve', 'bye', 'adeus',
+    'falou', 'flw', 'até', 'xau', 'tchau tchau', 'até a próxima',
+    'era só isso', 'era isso mesmo', 'só isso mesmo', 'era isso',
+    'não precisa mais', 'não preciso mais', 'já é suficiente',
+    'está bom', 'tá bom', 'ok obrigado', 'beleza obrigado'
+];
+
+// Palavras-chave que indicam negação/finalização
+const palavrasNegacao = [
+    'não', 'nao', 'não preciso', 'não quero', 'não tenho interesse',
+    'não é necessário', 'não precisa', 'tá bom assim', 'está bom assim',
+    'só isso', 'apenas isso', 'era só isso', 'só queria saber isso'
+];
+
+// Respostas para agradecimentos
+const respostasAgradecimento = [
+    "Por nada! 😊 Posso ajudar em mais alguma coisa?",
+    "Fico feliz em ajudar! 🤝 Há algo mais que posso esclarecer?",
+    "De nada! 😄 Estou aqui se precisar de mais informações.",
+    "Foi um prazer ajudar! 🌟 Tem alguma outra dúvida?",
+    "Disponha sempre! 👍 Posso auxiliar em mais algum assunto?"
+];
+
+// Respostas para despedidas
+const respostasDespedida = [
+    "Até logo! 👋 Estou sempre à disposição quando precisar. Tenha um ótimo dia!",
+    "Tchau! 😊 Estarei aqui sempre que precisar dos serviços do Grupo OC. Até mais!",
+    "Até breve! 🤝 Foi um prazer conversar com você. Conte conosco sempre!",
+    "Falou! 👍 Qualquer dúvida sobre nossos serviços, é só chamar. Até logo!",
+    "Até a próxima! 🌟 O Grupo OC está sempre pronto para atender você!"
+];
+
+// Respostas para negação/finalização
+const respostasFinalizacao = [
+    "Perfeito! 😊 Estou sempre à disposição quando precisar. O Grupo OC está aqui para ajudar!",
+    "Entendi! 👍 Qualquer dúvida sobre nossos serviços, é só me chamar. Tenha um ótimo dia!",
+    "Tudo bem! 🤝 Estarei aqui sempre que precisar de informações sobre o Grupo OC.",
+    "Certo! 😄 Conte conosco sempre que precisar. Até logo!",
+    "Beleza! 🌟 O Grupo OC está sempre pronto para atender você quando precisar!"
+];
+
+// Função para detectar tipo de mensagem
+function detectarTipoMensagem(mensagem) {
+    const textoLimpo = mensagem.toLowerCase().trim();
+    console.log('🔍 Analisando tipo de mensagem:', textoLimpo);
     
-    // Verificar palavras-chave de interesse
-    const temPalavraChave = palavrasChaveInteresse.some(palavra => 
-        textoCompleto.includes(palavra.toLowerCase())
+    // Verificar agradecimento
+    const ehAgradecimento = palavrasAgradecimento.some(palavra => 
+        textoLimpo.includes(palavra.toLowerCase())
     );
     
+    // Verificar despedida
+    const ehDespedida = palavrasDespedida.some(palavra => 
+        textoLimpo.includes(palavra.toLowerCase())
+    );
+    
+    // Verificar negação/finalização
+    const ehNegacao = palavrasNegacao.some(palavra => 
+        textoLimpo.includes(palavra.toLowerCase())
+    );
+    
+    // Verificar se é uma resposta curta de finalização
+    const ehRespostaCurta = textoLimpo.length <= 15 && (
+        textoLimpo.includes('não') || 
+        textoLimpo.includes('nao') ||
+        textoLimpo === 'ok' ||
+        textoLimpo === 'beleza' ||
+        textoLimpo === 'certo'
+    );
+    
+    console.log('• Agradecimento:', ehAgradecimento);
+    console.log('• Despedida:', ehDespedida);
+    console.log('• Negação:', ehNegacao);
+    console.log('• Resposta curta:', ehRespostaCurta);
+    
+    if (ehAgradecimento) return 'agradecimento';
+    if (ehDespedida) return 'despedida';
+    if (ehNegacao || ehRespostaCurta) return 'finalizacao';
+    
+    return 'normal';
+}
+
+// Função para gerar resposta de despedida
+function gerarRespostaDespedida(tipo) {
+    let respostas;
+    
+    switch (tipo) {
+        case 'agradecimento':
+            respostas = respostasAgradecimento;
+            break;
+        case 'despedida':
+            respostas = respostasDespedida;
+            break;
+        case 'finalizacao':
+            respostas = respostasFinalizacao;
+            break;
+        default:
+            return null;
+    }
+    
+    // Selecionar resposta aleatória
+    const indiceAleatorio = Math.floor(Math.random() * respostas.length);
+    return respostas[indiceAleatorio];
+}
+
+// Função melhorada para detectar interesse - CORRIGIDA
+function detectarInteresseComercial(mensagemUsuario, respostaIA) {
+    console.log('🔍 Analisando interesse comercial...');
+    
+    const textoCompleto = `${mensagemUsuario} ${respostaIA}`.toLowerCase();
+    console.log('• Texto para análise:', textoCompleto.substring(0, 200) + '...');
+    
+    // Verificar palavras-chave de interesse
+    const palavrasEncontradas = [];
+    const temPalavraChave = palavrasChaveInteresse.some(palavra => {
+        const encontrou = textoCompleto.includes(palavra.toLowerCase());
+        if (encontrou) {
+            palavrasEncontradas.push(palavra);
+        }
+        return encontrou;
+    });
+    
+    console.log('• Palavras-chave encontradas:', palavrasEncontradas);
+    
     // Verificar se a IA mencionou serviços específicos
-    const mencionouServicos = textoCompleto.includes('oc tel') || 
-                             textoCompleto.includes('oc digital') || 
-                             textoCompleto.includes('oc saúde') ||
-                             textoCompleto.includes('consultoria') ||
-                             textoCompleto.includes('auditoria');
+    const servicosEncontrados = [];
+    const mencionouServicos = ['oc tel', 'oc digital', 'oc saúde', 'consultoria', 'auditoria', 'telefonia', 'marketing', 'plano de saúde'].some(servico => {
+        const encontrou = textoCompleto.includes(servico);
+        if (encontrou) {
+            servicosEncontrados.push(servico);
+        }
+        return encontrou;
+    });
+    
+    console.log('• Serviços mencionados:', servicosEncontrados);
     
     // Verificar se é uma pergunta sobre como contratar
-    const perguntaContratacao = textoCompleto.includes('como') && 
+    const perguntaContratacao = (textoCompleto.includes('como') && 
                                (textoCompleto.includes('contratar') || 
                                 textoCompleto.includes('solicitar') ||
-                                textoCompleto.includes('começar'));
+                                textoCompleto.includes('começar'))) ||
+                               textoCompleto.includes('quero contratar') ||
+                               textoCompleto.includes('interesse em');
     
-    return temPalavraChave || mencionouServicos || perguntaContratacao;
+    console.log('• Pergunta sobre contratação:', perguntaContratacao);
+    
+    const resultado = temPalavraChave || mencionouServicos || perguntaContratacao;
+    console.log('• RESULTADO FINAL - Abrir formulário:', resultado);
+    
+    return resultado;
 }
 
 // ===== FUNÇÕES DE SCRAPING =====
@@ -641,7 +787,7 @@ app.post('/api/capture-lead', async (req, res) => {
     }
 });
 
-// Rota do chat - ATUALIZADA COM DETECÇÃO DE LEADS
+// Rota do chat - COM DESPEDIDA + DETECÇÃO DE LEADS
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId } = req.body;
@@ -654,17 +800,41 @@ app.post('/api/chat', async (req, res) => {
             }
         }
         
-        const resultado = await ia.gerarResposta(message, sessionId);
+        // ===== VERIFICAR TIPO DE MENSAGEM PRIMEIRO =====
+        const tipoMensagem = detectarTipoMensagem(message);
+        console.log('📝 Tipo de mensagem detectado:', tipoMensagem);
         
-        // ===== NOVA DETECÇÃO DE LEADS =====
-        const deveAbrirFormulario = detectarInteresseComercial(message, resultado.resposta);
+        let resposta;
+        let deveAbrirFormulario = false;
+        let fonteResposta = 'despedida';
+        
+        // Se for despedida, usar resposta pré-definida
+        if (tipoMensagem !== 'normal') {
+            resposta = gerarRespostaDespedida(tipoMensagem);
+            console.log('💬 Usando resposta de despedida:', resposta);
+            fonteResposta = 'despedida';
+        } else {
+            // Usar IA para resposta normal
+            const resultado = await ia.gerarResposta(message, sessionId);
+            resposta = resultado.resposta;
+            fonteResposta = resultado.fonte;
+            
+            // ===== DETECÇÃO DE LEADS MANTIDA =====
+            console.log('🔍 Verificando interesse comercial...');
+            console.log('• Mensagem:', message);
+            console.log('• Resposta IA:', resposta.substring(0, 100) + '...');
+            
+            deveAbrirFormulario = detectarInteresseComercial(message, resposta);
+            console.log('• Deve abrir formulário:', deveAbrirFormulario);
+        }
         
         res.json({
             success: true,
-            reply: resultado.resposta,
-            openForm: deveAbrirFormulario, // ← AGORA USA A NOVA FUNÇÃO
+            reply: resposta,
+            openForm: deveAbrirFormulario,
             debug: {
-                fonteResposta: resultado.fonte,
+                tipoMensagem: tipoMensagem,
+                fonteResposta: fonteResposta,
                 fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao',
                 urlsColetadas: {
                     principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
@@ -672,8 +842,14 @@ app.post('/api/chat', async (req, res) => {
                 },
                 servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0,
                 divisoes: dadosEmpresa?.metadados?.divisoes || [],
-                tokens: resultado.tokens || 0,
-                interesseDetectado: deveAbrirFormulario // ← ADICIONAR DEBUG
+                tokens: fonteResposta === 'despedida' ? 0 : (resultado?.tokens || 0),
+                interesseDetectado: deveAbrirFormulario,
+                mensagemOriginal: message,
+                palavrasDetectadas: tipoMensagem === 'normal' ? 
+                    palavrasChaveInteresse.filter(palavra => 
+                        message.toLowerCase().includes(palavra.toLowerCase())
+                    ) : [],
+                respostaTipo: tipoMensagem !== 'normal' ? 'despedida' : 'ia'
             }
         });
         
@@ -685,7 +861,6 @@ app.post('/api/chat', async (req, res) => {
         });
     }
 });
-
 // Middleware para Content Security Policy mais permissivo
 app.use((req, res, next) => {
   res.removeHeader('Content-Security-Policy');
@@ -1932,6 +2107,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
