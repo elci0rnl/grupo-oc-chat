@@ -883,7 +883,7 @@ function processarColetaLead(sessionId, mensagem) {
             return null;
     }
 }
-// Rota do chat - CORREÇÃO DEFINITIVA COM SISTEMA CONVERSACIONAL
+// Rota do chat - CORREÇÃO DEFINITIVA SEM ERROS
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId = 'default-' + Date.now() } = req.body;
@@ -901,7 +901,7 @@ app.post('/api/chat', async (req, res) => {
         
         // ===== VERIFICAR SE ESTÁ EM PROCESSO DE COLETA =====
         const sessaoLead = sessionsLead.get(sessionId); 
-if (sessaoLead && sessaoLead.estado !== estadosLead.FINALIZADO) {
+        if (sessaoLead && sessaoLead.estado !== estadosLead.FINALIZADO) {
             console.log('📝 Processando coleta de lead...');
             const resultado = processarColetaLead(sessionId, message);
             
@@ -925,8 +925,10 @@ if (sessaoLead && sessaoLead.estado !== estadosLead.FINALIZADO) {
         const tipoMensagem = detectarTipoMensagem(message);
         console.log('📝 Tipo de mensagem detectado:', tipoMensagem);
         
+        // ===== INICIALIZAR VARIÁVEIS =====
         let resposta;
         let fonteResposta = 'despedida';
+        let interesseDetectado = false; // ← INICIALIZAR AQUI
         
         // Se for despedida, usar resposta pré-definida
         if (tipoMensagem !== 'normal') {
@@ -935,7 +937,7 @@ if (sessaoLead && sessaoLead.estado !== estadosLead.FINALIZADO) {
             fonteResposta = 'despedida';
         } else {
             // ===== VERIFICAR INTERESSE COMERCIAL =====
-            const interesseDetectado = detectarInteresseComercial(message, '');
+            interesseDetectado = detectarInteresseComercial(message, ''); // ← DEFINIR AQUI
             console.log('🔍 Interesse detectado:', interesseDetectado);
             
             if (interesseDetectado) {
@@ -967,7 +969,25 @@ O **Grupo OC** oferece soluções empresariais através de 3 divisões especiali
                     // ===== FALLBACK GARANTIDO =====
                     console.log('🤖 Usando fallback garantido...');
                     
-                    if (message.toLowerCase().includes('serviços') || message.toLowerCase().includes('servicos')) {
+                    // Detectar tipo de saudação
+                    const mensagemLower = message.toLowerCase();
+                    
+                    if (mensagemLower.includes('bom dia') || mensagemLower.includes('boa tarde') || mensagemLower.includes('boa noite')) {
+                        const saudacao = mensagemLower.includes('bom dia') ? 'Bom dia' : 
+                                       mensagemLower.includes('boa tarde') ? 'Boa tarde' : 'Boa noite';
+                        
+                        resposta = `${saudacao}! 👋 Seja bem-vindo(a) ao **Grupo OC**!
+
+Sou seu assistente virtual e estou aqui para ajudar com informações sobre nossas soluções empresariais:
+
+🔹 **OC TEL** - Soluções em Telecom
+🔹 **OC DIGITAL** - Marketing Digital
+🔹 **OC SAÚDE** - Planos Empresariais
+
+💬 **Como posso ajudar você hoje?**`;
+                        fonteResposta = 'fallback_saudacao';
+                        
+                    } else if (mensagemLower.includes('serviços') || mensagemLower.includes('servicos')) {
                         resposta = `🏢 **Grupo OC - Soluções Empresariais**
 
 Oferecemos soluções através de 3 divisões especializadas:
@@ -987,8 +1007,10 @@ Oferecemos soluções através de 3 divisões especializadas:
 • Consultoria em saúde corporativa
 • Otimização de custos
 
-�� **Como posso ajudar você hoje?**`;
-                    } else if (message.toLowerCase().includes('contato')) {
+💬 **Como posso ajudar você hoje?**`;
+                        fonteResposta = 'fallback_servicos';
+                        
+                    } else if (mensagemLower.includes('contato')) {
                         resposta = `📞 **Entre em Contato com o Grupo OC**
 
 🌐 **Site:** https://grupooc.com.br/
@@ -1001,8 +1023,10 @@ Oferecemos soluções através de 3 divisões especializadas:
 • **OC SAÚDE** - Planos Empresariais
 
 💬 **Posso ajudar com informações específicas sobre algum serviço?**`;
+                        fonteResposta = 'fallback_contato';
+                        
                     } else {
-                        resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.
+                        resposta = `Olá! �� Sou o assistente virtual do **Grupo OC**.
 
 Oferecemos soluções empresariais através de 3 divisões:
 • **OC TEL** - Soluções em Telecom
@@ -1013,16 +1037,15 @@ Oferecemos soluções empresariais através de 3 divisões:
 🔹 Informações sobre serviços
 🔹 Como entrar em contato
 🔹 Solicitar orçamento`;
+                        fonteResposta = 'fallback_geral';
                     }
-                    
-                    fonteResposta = 'fallback_garantido';
                 }
             }
         }
         
         // Garantir que sempre temos uma resposta
         if (!resposta) {
-            resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
+            resposta = "Olá! �� Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
             fonteResposta = 'fallback_final';
         }
         
@@ -1043,7 +1066,7 @@ Oferecemos soluções empresariais através de 3 divisões:
                 temSessaoLead: !!sessaoLead,
                 estadoLead: sessaoLead?.estado || 'nenhum',
                 servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0,
-                interesseDetectado: interesseDetectado || false
+                interesseDetectado: interesseDetectado // ← AGORA ESTÁ DEFINIDA
             }
         });
         
@@ -2462,6 +2485,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
