@@ -1,7 +1,6 @@
 ﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import puppeteer from 'puppeteer';
 import GrupoOCIA from './modules/ia.js';
 import nodemailer from 'nodemailer';
 
@@ -1236,6 +1235,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
