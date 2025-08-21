@@ -1,4 +1,3 @@
-// modules/ia.js - VERSÃO GRUPO OC
 import OpenAI from 'openai';
 
 class GrupoOCIA {
@@ -9,206 +8,340 @@ class GrupoOCIA {
         
         this.dadosEmpresa = null;
         this.sessoes = new Map();
+        this.fallbackAtivo = false;
         
-        // Dados padrão do Grupo OC
-        this.dadosPadrao = {
-            empresa: {
-                nome: "Grupo OC",
-                site: "https://grupooc.com.br/",
-                descricao: "Empresa especializada em soluções empresariais e consultoria",
-                diferenciais: [
-                    "Mais de 15 anos de experiência no mercado",
-                    "Soluções personalizadas para cada cliente",
-                    "Equipe especializada e qualificada",
-                    "Atendimento personalizado e próximo ao cliente"
-                ]
-            },
-            servicos: [
-                {
-                    nome: "Consultoria Empresarial",
-                    descricao: "Consultoria especializada para otimização de processos empresariais"
-                },
-                {
-                    nome: "Soluções Tecnológicas",
-                    descricao: "Implementação de tecnologias para modernização empresarial"
-                },
-                {
-                    nome: "Gestão de Projetos",
-                    descricao: "Gerenciamento completo de projetos empresariais"
-                },
-                {
-                    nome: "Transformação Digital",
-                    descricao: "Apoio na digitalização e modernização de processos"
-                }
-            ]
-        };
-        
-        console.log('🤖 GrupoOCIA inicializada');
+        console.log('🤖 GrupoOCIA inicializada com fallback robusto');
     }
     
     carregarDadosEmpresa(dados) {
         this.dadosEmpresa = dados;
-        console.log('📊 Dados da empresa carregados via scraping');
-    }
-    
-    obterDadosAtivos() {
-        return this.dadosEmpresa || this.dadosPadrao;
-    }
-    
-    criarPromptSistema() {
-        const dados = this.obterDadosAtivos();
-        
-        let servicos = "";
-        if (dados.servicos && dados.servicos.servicos) {
-            servicos = dados.servicos.servicos.map(s => `- ${s.nome}: ${s.descricao}`).join('\n');
-        } else if (dados.servicos) {
-            servicos = dados.servicos.map(s => `- ${s.nome}: ${s.descricao}`).join('\n');
-        }
-        
-        let textosPrincipais = "";
-        if (dados.empresa && dados.empresa.textosPrincipais) {
-            textosPrincipais = dados.empresa.textosPrincipais.join('\n');
-        }
-        
-        return `Você é o assistente virtual oficial do GRUPO OC, uma empresa especializada em soluções empresariais.
-
-INFORMAÇÕES DA EMPRESA:
-- Nome: Grupo OC
-- Site: https://grupooc.com.br/
-- Especialidade: Soluções empresariais e consultoria
-
-SERVIÇOS OFERECIDOS:
-${servicos || `- Consultoria Empresarial: Consultoria especializada para otimização de processos
-- Soluções Tecnológicas: Implementação de tecnologias para modernização
-- Gestão de Projetos: Gerenciamento completo de projetos empresariais
-- Transformação Digital: Apoio na digitalização de processos`}
-
-INFORMAÇÕES ADICIONAIS DO SITE:
-${textosPrincipais || "Empresa com mais de 15 anos de experiência, focada em soluções personalizadas para cada cliente."}
-
-INSTRUÇÕES DE COMPORTAMENTO:
-1. Seja sempre profissional, cordial e prestativo
-2. Responda APENAS sobre o Grupo OC e seus serviços
-3. Se perguntarem sobre outras empresas, redirecione para o Grupo OC
-4. Ofereça informações detalhadas sobre nossos serviços
-5. Incentive o contato para orçamentos e consultorias
-6. Use um tom empresarial mas acolhedor
-7. Sempre se identifique como assistente do Grupo OC
-8. Se não souber algo específico, seja honesto e ofereça contato direto
-
-DADOS DE CONTATO:
-- Site: https://grupooc.com.br/
-- Para mais informações, visite nosso site ou entre em contato conosco
-
-Responda sempre em português brasileiro e mantenha o foco nos serviços do Grupo OC.`;
+        console.log('📊 Dados da empresa carregados');
+        console.log(`   • Fonte: ${dados?.metadados?.fonte || 'desconhecida'}`);
+        console.log(`   • Serviços: ${dados?.servicos?.servicos?.length || 0}`);
     }
     
     async gerarResposta(mensagem, sessionId = 'default') {
-        try {
-            if (!this.openai.apiKey) {
-                throw new Error('Chave da OpenAI não configurada');
+        // Tentar OpenAI primeiro (se disponível e não em fallback)
+        if (!this.fallbackAtivo && this.openai.apiKey) {
+            try {
+                return await this.gerarRespostaOpenAI(mensagem, sessionId);
+            } catch (error) {
+                console.log('⚠️ OpenAI falhou, ativando fallback:', error.message);
+                this.fallbackAtivo = true;
             }
-            
-            // Gerenciar histórico da sessão
-            if (!this.sessoes.has(sessionId)) {
-                this.sessoes.set(sessionId, []);
-            }
-            
-            const historico = this.sessoes.get(sessionId);
-            
-            // Adicionar mensagem do usuário
-            historico.push({
-                role: 'user',
-                content: mensagem
-            });
-            
-            // Manter apenas as últimas 10 mensagens
-            if (historico.length > 10) {
-                historico.splice(0, historico.length - 10);
-            }
-            
-            // Criar mensagens para a API
-            const mensagens = [
-                {
-                    role: 'system',
-                    content: this.criarPromptSistema()
-                },
-                ...historico
-            ];
-            
-            console.log('🤖 Gerando resposta via OpenAI...');
-            
-            const response = await this.openai.chat.completions.create({
-                model: 'gpt-3.5-turbo',
-                messages: mensagens,
-                max_tokens: 500,
-                temperature: 0.7
-            });
-            
-            const resposta = response.choices[0].message.content;
-            
-            // Adicionar resposta ao histórico
-            historico.push({
-                role: 'assistant',
-                content: resposta
-            });
-            
-            console.log('✅ Resposta gerada com sucesso');
-            
-            return {
-                resposta: resposta,
-                fonte: this.dadosEmpresa ? 'scraping' : 'dados-padrao',
-                tokens: response.usage?.total_tokens || 0
-            };
-            
-        } catch (error) {
-            console.error('❌ Erro na IA:', error.message);
-            
-            // Resposta de fallback
-            const respostaFallback = `Olá! Sou o assistente virtual do Grupo OC. 
-
-Estamos enfrentando uma instabilidade temporária em nosso sistema, mas posso ajudá-lo com informações básicas:
-
-🏢 **Sobre o Grupo OC:**
-- Empresa especializada em soluções empresariais
-- Mais de 15 anos de experiência
-- Consultoria e soluções tecnológicas
-
-🛠️ **Nossos Serviços:**
-- Consultoria Empresarial
-- Soluções Tecnológicas  
-- Gestão de Projetos
-- Transformação Digital
-
-Para mais informações detalhadas, visite nosso site: https://grupooc.com.br/
-
-Como posso ajudá-lo hoje?`;
-            
-            return {
-                resposta: respostaFallback,
-                fonte: 'fallback',
-                erro: error.message
-            };
         }
+        
+        // Usar fallback inteligente
+        return this.gerarRespostaFallback(mensagem, sessionId);
+    }
+    
+    async gerarRespostaOpenAI(mensagem, sessionId) {
+        const dados = this.dadosEmpresa || this.obterDadosPadrao();
+        
+        if (!this.sessoes.has(sessionId)) {
+            this.sessoes.set(sessionId, []);
+        }
+        
+        const historico = this.sessoes.get(sessionId);
+        historico.push({ role: 'user', content: mensagem });
+        
+        if (historico.length > 6) {
+            historico.splice(0, historico.length - 6);
+        }
+        
+        const prompt = this.criarPromptSistema(dados);
+        const mensagens = [
+            { role: 'system', content: prompt },
+            ...historico
+        ];
+        
+        const response = await this.openai.chat.completions.create({
+            model: 'gpt-3.5-turbo',
+            messages: mensagens,
+            max_tokens: 400,
+            temperature: 0.7
+        });
+        
+        const resposta = response.choices[0].message.content;
+        historico.push({ role: 'assistant', content: resposta });
+        
+        return {
+            resposta: resposta,
+            fonte: 'openai',
+            tokens: response.usage?.total_tokens || 0
+        };
+    }
+    
+    gerarRespostaFallback(mensagem, sessionId) {
+        const dados = this.dadosEmpresa || this.obterDadosPadrao();
+        const mensagemLower = mensagem.toLowerCase();
+        
+        console.log('🤖 Usando IA fallback para responder');
+        
+        // Detectar tipo de pergunta e responder adequadamente
+        if (this.detectarSaudacao(mensagem)) {
+            return this.responderSaudacao();
+        }
+        
+        if (this.detectarPerguntaServicos(mensagem)) {
+            return this.responderSobreServicos(dados);
+        }
+        
+        if (this.detectarPerguntaSobre(mensagem)) {
+            return this.responderSobreEmpresa(dados);
+        }
+        
+        if (this.detectarPerguntaContato(mensagem)) {
+            return this.responderSobreContato();
+        }
+        
+        if (this.detectarPerguntaPreco(mensagem)) {
+            return this.responderSobrePrecos();
+        }
+        
+        // Resposta padrão inteligente
+        return this.responderPadrao(dados);
+    }
+    
+    detectarSaudacao(mensagem) {
+        const saudacoes = ['olá', 'oi', 'bom dia', 'boa tarde', 'boa noite', 'hello', 'hi'];
+        return saudacoes.some(s => mensagem.toLowerCase().includes(s));
+    }
+    
+    detectarPerguntaServicos(mensagem) {
+        const palavras = [
+            'serviços', 'serviço', 'fazem', 'oferecem', 'soluções', 'consultoria', 
+            'trabalham', 'especialidade', 'atividade', 'o que vocês', 'que fazem'
+        ];
+        return palavras.some(p => mensagem.toLowerCase().includes(p));
+    }
+    
+    detectarPerguntaSobre(mensagem) {
+        const palavras = [
+            'sobre', 'empresa', 'grupo oc', 'quem são', 'história', 
+            'experiência', 'tempo', 'mercado', 'quem é'
+        ];
+        return palavras.some(p => mensagem.toLowerCase().includes(p));
+    }
+    
+    detectarPerguntaContato(mensagem) {
+        const palavras = [
+            'contato', 'telefone', 'email', 'falar', 'conversar', 
+            'atendimento', 'como entrar', 'localização'
+        ];
+        return palavras.some(p => mensagem.toLowerCase().includes(p));
+    }
+    
+    detectarPerguntaPreco(mensagem) {
+        const palavras = [
+            'preço', 'valor', 'custo', 'orçamento', 'quanto custa', 
+            'investimento', 'proposta', 'cotação'
+        ];
+        return palavras.some(p => mensagem.toLowerCase().includes(p));
+    }
+    
+    responderSaudacao() {
+        const resposta = `Olá! 👋 Seja bem-vindo(a) ao **Grupo OC**!
+
+🏢 Somos uma empresa especializada em **soluções empresariais** com mais de 15 anos de experiência no mercado.
+
+✨ **Como posso ajudá-lo hoje?**
+• 🛠️ Conhecer nossos serviços
+• 🏢 Saber mais sobre nossa empresa  
+• 📞 Informações de contato
+• 💼 Solicitar orçamento
+
+Digite sua dúvida ou interesse!`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-saudacao'
+        };
+    }
+    
+    responderSobreServicos(dados) {
+        let resposta = `🛠️ **Serviços do Grupo OC**
+
+Somos especializados em soluções empresariais personalizadas. Nossos principais serviços incluem:
+
+`;
+        
+        if (dados.servicos && dados.servicos.servicos && dados.servicos.servicos.length > 0) {
+            dados.servicos.servicos.slice(0, 6).forEach((servico, index) => {
+                resposta += `**${index + 1}. ${servico.nome}**\n${servico.descricao}\n\n`;
+            });
+        } else {
+            resposta += `**1. Consultoria Empresarial**
+Consultoria especializada para otimização de processos e estratégias
+
+**2. Soluções Tecnológicas**
+Implementação de tecnologias para modernização empresarial
+
+**3. Gestão de Projetos**
+Gerenciamento completo de projetos com metodologias ágeis
+
+**4. Transformação Digital**
+Apoio na digitalização e modernização de processos
+
+`;
+        }
+        
+        resposta += `🌐 **Saiba mais:** https://grupooc.com.br/nosso-servico/
+
+💬 **Qual serviço te interessa mais?** Posso dar mais detalhes!`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-servicos'
+        };
+    }
+    
+    responderSobreEmpresa(dados) {
+        const sobre = dados?.empresa?.sobre || 'Somos uma empresa consolidada no mercado, especializada em oferecer soluções empresariais personalizadas.';
+        
+        const resposta = `🏢 **Sobre o Grupo OC**
+
+${sobre}
+
+🎯 **Nossos Diferenciais:**
+• ⭐ Mais de 15 anos de experiência no mercado
+• 👥 Equipe especializada e qualificada  
+• 🎨 Soluções personalizadas para cada cliente
+• 🤝 Atendimento próximo e dedicado
+• 🚀 Metodologias inovadoras e eficientes
+• 📈 Resultados comprovados
+
+🌐 **Conheça mais:** https://grupooc.com.br/
+
+�� **Quer saber como podemos ajudar sua empresa?**`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-sobre'
+        };
+    }
+    
+    responderSobreContato() {
+        const resposta = `📞 **Entre em Contato com o Grupo OC**
+
+Para orçamentos, consultas ou mais informações sobre nossos serviços:
+
+🌐 **Site Oficial:** https://grupooc.com.br/
+📋 **Nossos Serviços:** https://grupooc.com.br/nosso-servico/
+
+💼 **Nossa equipe está pronta para:**
+• Analisar suas necessidades
+• Apresentar soluções personalizadas
+• Elaborar propostas comerciais
+• Agendar reuniões de apresentação
+
+🎯 **Que tipo de solução sua empresa precisa?**`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-contato'
+        };
+    }
+    
+    responderSobrePrecos() {
+        const resposta = `💰 **Orçamentos e Investimentos**
+
+No Grupo OC, cada projeto é único e personalizado para suas necessidades específicas.
+
+📋 **Como funciona:**
+• 🔍 Análise gratuita das suas necessidades
+• 📊 Diagnóstico detalhado do cenário atual
+• 💡 Proposta de solução personalizada
+• 💼 Orçamento adequado ao seu investimento
+
+🎯 **Fatores que influenciam:**
+• Escopo do projeto
+• Complexidade da solução
+• Prazo de implementação
+• Recursos necessários
+
+📞 **Para orçamento personalizado:**
+Visite: https://grupooc.com.br/
+
+💬 **Conte-me mais sobre seu projeto para orientá-lo melhor!**`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-precos'
+        };
+    }
+    
+    responderPadrao(dados) {
+        const resposta = `🤖 **Assistente Virtual do Grupo OC**
+
+Entendi sua mensagem! Sou especializado em ajudar com informações sobre o Grupo OC.
+
+🎯 **Posso ajudá-lo com:**
+• 🛠️ **Serviços:** Consultoria, soluções tecnológicas, gestão de projetos
+• 🏢 **Empresa:** Nossa história, experiência e diferenciais
+• 📞 **Contato:** Como falar conosco e solicitar orçamentos
+• 💼 **Soluções:** Como podemos ajudar sua empresa
+
+💬 **Reformule sua pergunta ou escolha um dos tópicos acima!**
+
+🌐 **Site oficial:** https://grupooc.com.br/`;
+        
+        return {
+            resposta: resposta,
+            fonte: 'fallback-padrao'
+        };
+    }
+    
+    obterDadosPadrao() {
+        return {
+            empresa: {
+                nome: "Grupo OC",
+                sobre: "Empresa especializada em soluções empresariais com mais de 15 anos de experiência no mercado, oferecendo consultoria e soluções personalizadas para transformar empresas e impulsionar resultados."
+            },
+            servicos: {
+                servicos: [
+                    { 
+                        nome: "Consultoria Empresarial", 
+                        descricao: "Consultoria especializada para otimização de processos, estratégias de negócio e melhoria da performance empresarial" 
+                    },
+                    { 
+                        nome: "Soluções Tecnológicas", 
+                        descricao: "Implementação de tecnologias inovadoras para modernização e digitalização empresarial" 
+                    },
+                    { 
+                        nome: "Gestão de Projetos", 
+                        descricao: "Gerenciamento completo de projetos com metodologias ágeis e foco em resultados" 
+                    },
+                    { 
+                        nome: "Transformação Digital", 
+                        descricao: "Apoio completo na jornada de transformação digital da sua empresa" 
+                    }
+                ]
+            }
+        };
+    }
+    
+    criarPromptSistema(dados) {
+        return `Você é o assistente virtual oficial do Grupo OC, empresa de soluções empresariais. Seja profissional, cordial e foque exclusivamente nos serviços do Grupo OC. Site: https://grupooc.com.br/`;
     }
     
     deveAbrirFormulario(mensagem, resposta) {
-        const palavrasChave = [
-            'orçamento', 'contato', 'preço', 'valor', 'custo',
-            'contratar', 'interessado', 'proposta', 'reunião',
-            'telefone', 'email', 'falar com', 'atendimento'
+        const palavras = [
+            'orçamento', 'contato', 'preço', 'interessado', 'proposta', 
+            'reunião', 'conversar', 'falar', 'atendimento'
         ];
-        
         const texto = (mensagem + ' ' + resposta).toLowerCase();
-        return palavrasChave.some(palavra => texto.includes(palavra));
+        return palavras.some(p => texto.includes(p));
     }
     
     getStatus() {
         return {
             openaiConfigurada: !!this.openai.apiKey,
+            fallbackAtivo: this.fallbackAtivo,
             dadosCarregados: !!this.dadosEmpresa,
             sessoesAtivas: this.sessoes.size,
-            empresa: 'Grupo OC'
+            empresa: 'Grupo OC',
+            servicosCarregados: this.dadosEmpresa?.servicos?.servicos?.length || 0
         };
     }
 }
