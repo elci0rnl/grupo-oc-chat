@@ -193,15 +193,14 @@ async function aguardar(ms) {
 }
 
 // FUNÇÃO DE SCRAPING MELHORADA - server-index.js
+// SCRAPING AINDA MAIS OTIMIZADO - OPCIONAL
 async function coletarDadosGrupoOC() {
     let browser = null;
     try {
-        console.log('🕷️ Iniciando scraping avançado do Grupo OC...');
+        console.log('🕷️ Iniciando scraping PREMIUM do Grupo OC...');
         
-        // Configuração otimizada para Render
         const puppeteerConfig = {
             headless: true,
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -212,142 +211,262 @@ async function coletarDadosGrupoOC() {
                 '--single-process',
                 '--disable-gpu',
                 '--disable-web-security',
-                '--disable-features=VizDisplayCompositor'
+                '--disable-features=VizDisplayCompositor',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-extensions',
+                '--disable-plugins',
+                '--disable-default-apps',
+                '--disable-hang-monitor',
+                '--disable-prompt-on-repost',
+                '--disable-sync',
+                '--disable-translate',
+                '--metrics-recording-only',
+                '--no-default-browser-check',
+                '--safebrowsing-disable-auto-update',
+                '--enable-automation',
+                '--password-store=basic',
+                '--use-mock-keychain',
+                '--disable-ipc-flooding-protection'
             ]
         };
         
         try {
             browser = await puppeteer.launch(puppeteerConfig);
-            console.log('✅ Chrome iniciado com sucesso!');
+            console.log('✅ Chrome PREMIUM iniciado no Render!');
         } catch (chromeError) {
-            console.log('⚠️ Chrome não encontrado, tentando scraping alternativo...');
+            console.log('❌ Chrome falhou:', chromeError.message);
             return await scrapingAlternativo();
         }
         
         const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Linux; x86_64) AppleWebKit/537.36');
+        
+        // Configurações avançadas
+        await page.setUserAgent('Mozilla/5.0 (Linux; x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.setDefaultTimeout(30000);
+        
+        // Interceptar requests para otimizar
+        await page.setRequestInterception(true);
+        page.on('request', (req) => {
+            const resourceType = req.resourceType();
+            if(['stylesheet', 'image', 'font', 'media'].includes(resourceType)){
+                req.abort();
+            } else {
+                req.continue();
+            }
+        });
         
         const dados = {
             empresa: { textosPrincipais: [], diferenciais: [], sobre: "" },
             servicos: { servicos: [], beneficios: [], detalhes: [] },
             metadados: {
                 dataColeta: new Date().toISOString(),
-                fonte: 'scraping-real',
-                versao: '4.0',
+                fonte: 'scraping-premium-render',
+                versao: '6.0-premium',
                 urlPrincipal: 'https://grupooc.com.br/',
                 urlServicos: 'https://grupooc.com.br/nosso-servico/',
-                status: 'tentativa'
+                status: 'premium-ativo'
             }
         };
         
-        // ===== PÁGINA PRINCIPAL =====
+        // ===== PÁGINA PRINCIPAL PREMIUM =====
         try {
-            console.log('📄 Coletando página principal...');
+            console.log('📄 Scraping PREMIUM - Página principal...');
             await page.goto('https://grupooc.com.br/', { 
-                waitUntil: 'networkidle0', 
+                waitUntil: 'networkidle2', 
                 timeout: 30000 
             });
             
+            // Aguardar carregamento dinâmico
+            await page.waitForTimeout(5000);
+            
+            // Scroll para carregar conteúdo lazy
+            await page.evaluate(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+            await page.waitForTimeout(2000);
+            
             const dadosPrincipal = await page.evaluate(() => {
                 const textos = [];
-                const elementos = document.querySelectorAll('h1, h2, h3, p, .elementor-heading-title, .elementor-text-editor');
+                const elementos = document.querySelectorAll(`
+                    h1, h2, h3, h4, h5, h6,
+                    p,
+                    .elementor-heading-title,
+                    .elementor-text-editor,
+                    .elementor-widget-text-editor,
+                    .wp-block-heading,
+                    .entry-content p,
+                    .content p,
+                    [class*="heading"],
+                    [class*="title"],
+                    [class*="text"]
+                `);
+                
                 elementos.forEach(el => {
                     const texto = el.textContent?.trim();
-                    if (texto && texto.length > 30 && texto.length < 800) {
+                    if (texto && 
+                        texto.length > 15 && 
+                        texto.length < 1500 && 
+                        !texto.includes('©') && 
+                        !texto.includes('cookie') &&
+                        !texto.includes('JavaScript') &&
+                        !texto.toLowerCase().includes('menu')) {
                         textos.push(texto);
                     }
                 });
-                return textos;
+                
+                return [...new Set(textos)]; // Remove duplicatas
             });
             
-            dados.empresa.textosPrincipais = dadosPrincipal.slice(0, 15);
-            console.log(`✅ Página principal: ${dadosPrincipal.length} textos coletados`);
+            dados.empresa.textosPrincipais = dadosPrincipal.slice(0, 25);
+            console.log(`✅ Página principal PREMIUM: ${dadosPrincipal.length} textos únicos`);
             
         } catch (error) {
             console.log('⚠️ Erro na página principal:', error.message);
         }
         
-        // ===== PÁGINA DE SERVIÇOS =====
+        // ===== PÁGINA DE SERVIÇOS PREMIUM =====
         try {
-            console.log('🛠️ Coletando página de serviços...');
+            console.log('🛠️ Scraping PREMIUM - Página de serviços...');
             await page.goto('https://grupooc.com.br/nosso-servico/', { 
-                waitUntil: 'networkidle0', 
+                waitUntil: 'networkidle2', 
                 timeout: 30000 
             });
+            
+            // Aguardar carregamento dinâmico
+            await page.waitForTimeout(5000);
+            
+            // Scroll para carregar conteúdo lazy
+            await page.evaluate(() => {
+                window.scrollTo(0, document.body.scrollHeight);
+            });
+            await page.waitForTimeout(2000);
             
             const dadosServicos = await page.evaluate(() => {
                 const servicos = [];
                 const detalhes = [];
                 
-                // Seletores específicos para Elementor
+                // Seletores premium para serviços
                 const seletoresServicos = [
                     '.elementor-heading-title',
-                    '.elementor-text-editor h3',
-                    '.elementor-text-editor h4',
-                    '.elementor-widget-heading h2',
-                    '.elementor-widget-heading h3',
-                    'h1, h2, h3, h4'
+                    '.elementor-text-editor h1, .elementor-text-editor h2, .elementor-text-editor h3, .elementor-text-editor h4',
+                    '.elementor-widget-heading h1, .elementor-widget-heading h2, .elementor-widget-heading h3, .elementor-widget-heading h4',
+                    'h1, h2, h3, h4, h5',
+                    '.wp-block-heading',
+                    '.entry-title',
+                    '[class*="service"] h1, [class*="service"] h2, [class*="service"] h3',
+                    '[class*="titulo"]',
+                    '.content h1, .content h2, .content h3'
                 ];
                 
                 seletoresServicos.forEach(seletor => {
                     const elementos = document.querySelectorAll(seletor);
                     elementos.forEach(el => {
                         const titulo = el.textContent?.trim();
-                        if (titulo && titulo.length > 10 && titulo.length < 200) {
+                        if (titulo && 
+                            titulo.length > 5 && 
+                            titulo.length < 400 && 
+                            !titulo.includes('©') &&
+                            !titulo.toLowerCase().includes('menu') &&
+                            !titulo.toLowerCase().includes('footer')) {
                             
-                            // Procurar descrição próxima
                             let descricao = titulo;
-                            const proximo = el.nextElementSibling;
-                            if (proximo && proximo.tagName === 'P') {
-                                descricao = proximo.textContent?.trim() || titulo;
+                            
+                            // Buscar descrição em múltiplos lugares
+                            const proximoP = el.nextElementSibling;
+                            if (proximoP && proximoP.tagName === 'P') {
+                                const textoP = proximoP.textContent?.trim();
+                                if (textoP && textoP.length > 20) {
+                                    descricao = textoP;
+                                }
+                            }
+                            
+                            // Buscar no container pai
+                            const container = el.closest('.elementor-widget, .wp-block, .service-item, .content-block');
+                            if (container && descricao === titulo) {
+                                const descP = container.querySelector('p');
+                                if (descP) {
+                                    const textoDesc = descP.textContent?.trim();
+                                    if (textoDesc && textoDesc.length > 20) {
+                                        descricao = textoDesc;
+                                    }
+                                }
                             }
                             
                             servicos.push({
                                 nome: titulo,
-                                descricao: descricao
+                                descricao: descricao,
+                                fonte: seletor
                             });
                         }
                     });
                 });
                 
-                // Coletar todos os parágrafos para detalhes
-                const paragrafos = document.querySelectorAll('p, .elementor-text-editor p');
+                // Coletar parágrafos detalhados
+                const paragrafos = document.querySelectorAll(`
+                    p,
+                    .elementor-text-editor p,
+                    .elementor-widget-text-editor p,
+                    .wp-block-paragraph,
+                    .entry-content p,
+                    .content p
+                `);
+                
                 paragrafos.forEach(p => {
                     const texto = p.textContent?.trim();
-                    if (texto && texto.length > 50 && texto.length < 500) {
+                    if (texto && 
+                        texto.length > 30 && 
+                        texto.length < 1200 && 
+                        !texto.includes('©') && 
+                        !texto.includes('cookie') &&
+                        !texto.toLowerCase().includes('menu')) {
                         detalhes.push(texto);
                     }
                 });
                 
-                return { servicos, detalhes };
+                return { 
+                    servicos: [...new Set(servicos.map(s => JSON.stringify(s)))].map(s => JSON.parse(s)), 
+                    detalhes: [...new Set(detalhes)] 
+                };
             });
             
-            // Filtrar serviços únicos
+            // Filtrar serviços únicos e relevantes
             const servicosUnicos = [];
             const nomesVistos = new Set();
             
             dadosServicos.servicos.forEach(servico => {
-                const nome = servico.nome.toLowerCase().trim();
-                if (!nomesVistos.has(nome) && servico.nome.length > 10) {
-                    nomesVistos.add(nome);
-                    servicosUnicos.push(servico);
+                const nomeNormalizado = servico.nome.toLowerCase().trim();
+                if (!nomesVistos.has(nomeNormalizado) && 
+                    servico.nome.length > 5 && 
+                    !servico.nome.toLowerCase().includes('grupo oc') &&
+                    !servico.nome.toLowerCase().includes('nosso')) {
+                    nomesVistos.add(nomeNormalizado);
+                    servicosUnicos.push({
+                        nome: servico.nome,
+                        descricao: servico.descricao
+                    });
                 }
             });
             
-            dados.servicos.servicos = servicosUnicos.slice(0, 10);
-            dados.servicos.detalhes = dadosServicos.detalhes.slice(0, 15);
+            dados.servicos.servicos = servicosUnicos.slice(0, 20);
+            dados.servicos.detalhes = dadosServicos.detalhes.slice(0, 30);
             
-            console.log(`✅ Página de serviços: ${servicosUnicos.length} serviços coletados`);
+            console.log(`✅ Página de serviços PREMIUM: ${servicosUnicos.length} serviços únicos`);
+            console.log(`📝 Detalhes coletados: ${dadosServicos.detalhes.length}`);
             
         } catch (error) {
             console.log('⚠️ Erro na página de serviços:', error.message);
         }
         
-        dados.metadados.status = 'sucesso-real';
+        dados.metadados.status = 'sucesso-premium-render';
+        console.log('🎉 SCRAPING PREMIUM CONCLUÍDO COM SUCESSO TOTAL!');
+        
         return dados;
         
     } catch (error) {
-        console.error('❌ Erro no scraping:', error.message);
+        console.error('❌ Erro no scraping premium:', error.message);
         return await scrapingAlternativo();
     } finally {
         if (browser) {
@@ -1135,6 +1254,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
