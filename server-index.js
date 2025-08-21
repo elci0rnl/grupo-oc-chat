@@ -1462,111 +1462,156 @@ app.get('/widget', (req, res) => {
         }
     }
 
-    // ===== FUNÇÕES DO FORMULÁRIO DE LEADS =====
+    // ===== FUNÇÕES DO FORMULÁRIO DE LEADS - CORRIGIDAS =====
     function openLeadForm() {
-        if (leadFormOpen) return;
+        console.log('🎯 Tentando abrir formulário de leads...');
+        
+        if (leadFormOpen) {
+            console.log('⚠️ Formulário já está aberto');
+            return;
+        }
         
         leadFormOpen = true;
         const overlay = document.getElementById('leadFormOverlay');
+        
+        if (!overlay) {
+            console.error('❌ Elemento leadFormOverlay não encontrado!');
+            return;
+        }
+        
+        console.log('✅ Abrindo formulário de leads...');
         overlay.style.display = 'flex';
         
         // Focar no primeiro campo
         setTimeout(() => {
-            document.getElementById('leadNome').focus();
+            const nomeField = document.getElementById('leadNome');
+            if (nomeField) {
+                nomeField.focus();
+            }
         }, 300);
     }
 
     function closeLeadForm() {
+        console.log('🔒 Fechando formulário de leads...');
         leadFormOpen = false;
         const overlay = document.getElementById('leadFormOverlay');
-        overlay.style.display = 'none';
+        
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
         
         // Reset form
-        document.getElementById('leadForm').reset();
-        document.getElementById('leadForm').style.display = 'block';
-        document.getElementById('leadFormLoading').style.display = 'none';
-        document.getElementById('leadFormSuccess').style.display = 'none';
+        const form = document.getElementById('leadForm');
+        if (form) {
+            form.reset();
+            form.style.display = 'block';
+        }
+        
+        const loading = document.getElementById('leadFormLoading');
+        if (loading) loading.style.display = 'none';
+        
+        const success = document.getElementById('leadFormSuccess');
+        if (success) success.style.display = 'none';
     }
 
     // Fechar formulário clicando fora
-    document.getElementById('leadFormOverlay').addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeLeadForm();
+    document.addEventListener('DOMContentLoaded', function() {
+        const overlay = document.getElementById('leadFormOverlay');
+        if (overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeLeadForm();
+                }
+            });
         }
     });
 
     // Submissão do formulário
-    document.getElementById('leadForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const leadData = {
-            nome: formData.get('nome'),
-            email: formData.get('email'),
-            telefone: formData.get('telefone'),
-            empresa: formData.get('empresa'),
-            cnpj: formData.get('cnpj'),
-            interesse: formData.get('interesse'),
-            mensagem: formData.get('mensagem'),
-            origem: 'Chat Widget - Grupo OC',
-            timestamp: new Date().toISOString()
-        };
-        
-        // Mostrar loading
-        document.getElementById('leadForm').style.display = 'none';
-        document.getElementById('leadFormLoading').style.display = 'block';
-        
-        try {
-            const response = await fetch('/api/capture-lead', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(leadData)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                // Mostrar sucesso
-                document.getElementById('leadFormLoading').style.display = 'none';
-                document.getElementById('leadFormSuccess').style.display = 'block';
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('leadForm');
+        if (form) {
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
                 
-                // Fechar automaticamente após 5 segundos
-                setTimeout(() => {
-                    closeLeadForm();
-                }, 5000);
-            } else {
-                throw new Error(result.error || 'Erro ao enviar solicitação');
-            }
-            
-        } catch (error) {
-            console.error('Erro ao enviar lead:', error);
-            alert('Erro ao enviar solicitação. Tente novamente.');
-            
-            // Voltar ao formulário
-            document.getElementById('leadFormLoading').style.display = 'none';
-            document.getElementById('leadForm').style.display = 'block';
+                const formData = new FormData(this);
+                const leadData = {
+                    nome: formData.get('nome'),
+                    email: formData.get('email'),
+                    telefone: formData.get('telefone'),
+                    empresa: formData.get('empresa'),
+                    cnpj: formData.get('cnpj'),
+                    interesse: formData.get('interesse'),
+                    mensagem: formData.get('mensagem'),
+                    origem: 'Chat Widget - Grupo OC',
+                    timestamp: new Date().toISOString()
+                };
+                
+                // Mostrar loading
+                document.getElementById('leadForm').style.display = 'none';
+                document.getElementById('leadFormLoading').style.display = 'block';
+                
+                try {
+                    const response = await fetch('/api/capture-lead', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(leadData)
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Mostrar sucesso
+                        document.getElementById('leadFormLoading').style.display = 'none';
+                        document.getElementById('leadFormSuccess').style.display = 'block';
+                        
+                        // Fechar automaticamente após 5 segundos
+                        setTimeout(() => {
+                            closeLeadForm();
+                        }, 5000);
+                    } else {
+                        throw new Error(result.error || 'Erro ao enviar solicitação');
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro ao enviar lead:', error);
+                    alert('Erro ao enviar solicitação. Tente novamente.');
+                    
+                    // Voltar ao formulário
+                    document.getElementById('leadFormLoading').style.display = 'none';
+                    document.getElementById('leadForm').style.display = 'block';
+                }
+            });
         }
     });
 
-    // Máscara para telefone
-    document.getElementById('leadTelefone').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        if (value.length <= 11) {
-            value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-            if (value.length < 14) {
-                value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-            }
+    // Máscaras para campos
+    document.addEventListener('DOMContentLoaded', function() {
+        // Máscara para telefone
+        const telefoneField = document.getElementById('leadTelefone');
+        if (telefoneField) {
+            telefoneField.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length <= 11) {
+                    value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+                    if (value.length < 14) {
+                        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+                    }
+                }
+                e.target.value = value;
+            });
         }
-        e.target.value = value;
-    });
 
-    // Máscara para CNPJ
-    document.getElementById('leadCNPJ').addEventListener('input', function(e) {
-        let value = e.target.value.replace(/\D/g, '');
-        value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-        e.target.value = value;
+        // Máscara para CNPJ
+        const cnpjField = document.getElementById('leadCNPJ');
+        if (cnpjField) {
+            cnpjField.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                e.target.value = value;
+            });
+        }
     });
 
     messageInput.addEventListener('keypress', function(e) {
@@ -1623,14 +1668,25 @@ app.get('/widget', (req, res) => {
             const data = await response.json();
             hideTyping();
             
+            console.log('📊 Resposta do servidor:', data);
+            
             if (data.success) {
                 addMessage(data.reply);
                 
-                // Verificar se deve abrir formulário de lead
-                if (data.openForm && !leadFormOpen) {
+                // ===== VERIFICAÇÃO CORRIGIDA PARA ABRIR FORMULÁRIO =====
+                console.log('🔍 Verificando se deve abrir formulário...');
+                console.log('• openForm:', data.openForm);
+                console.log('• leadFormOpen:', leadFormOpen);
+                
+                if (data.openForm === true && !leadFormOpen) {
+                    console.log('🎯 Abrindo formulário de leads em 1 segundo...');
                     setTimeout(() => {
                         openLeadForm();
-                    }, 1000); // Aguardar 1 segundo após a resposta
+                    }, 1000);
+                } else if (data.openForm === true && leadFormOpen) {
+                    console.log('⚠️ Formulário já está aberto, não abrindo novamente');
+                } else {
+                    console.log('ℹ️ Não é necessário abrir formulário');
                 }
             } else {
                 addMessage('Desculpe, ocorreu um erro. Tente novamente.');
@@ -1644,7 +1700,20 @@ app.get('/widget', (req, res) => {
 
     // Inicialização do widget
     window.onload = function() {
-        console.log('Widget Chat Grupo OC carregado!');
+        console.log('🚀 Widget Chat Grupo OC carregado!');
+        console.log('🔍 Verificando elementos do formulário...');
+        
+        const overlay = document.getElementById('leadFormOverlay');
+        const form = document.getElementById('leadForm');
+        
+        console.log('• leadFormOverlay:', overlay ? 'Encontrado' : 'NÃO ENCONTRADO');
+        console.log('• leadForm:', form ? 'Encontrado' : 'NÃO ENCONTRADO');
+        
+        if (!overlay || !form) {
+            console.error('❌ Elementos do formulário não encontrados!');
+        } else {
+            console.log('✅ Todos os elementos do formulário encontrados');
+        }
     };
 </script>
 </body>
@@ -2138,6 +2207,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
