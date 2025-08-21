@@ -346,17 +346,18 @@ function gerarRespostaDespedida(tipo) {
     return respostas[indiceAleatorio];
 }
 
-// Função melhorada para detectar interesse - CORRIGIDA
+// Função melhorada para detectar interesse - CORRIGIDA PARA EVITAR FALSOS POSITIVOS
 function detectarInteresseComercial(mensagemUsuario, respostaIA) {
     console.log('🔍 Analisando interesse comercial...');
     
     const textoCompleto = `${mensagemUsuario} ${respostaIA}`.toLowerCase();
     console.log('• Texto para análise:', textoCompleto.substring(0, 200) + '...');
     
-    // Verificar palavras-chave de interesse
+    // Verificar palavras-chave de interesse APENAS na mensagem do usuário
+    const mensagemLimpa = mensagemUsuario.toLowerCase();
     const palavrasEncontradas = [];
     const temPalavraChave = palavrasChaveInteresse.some(palavra => {
-        const encontrou = textoCompleto.includes(palavra.toLowerCase());
+        const encontrou = mensagemLimpa.includes(palavra.toLowerCase());
         if (encontrou) {
             palavrasEncontradas.push(palavra);
         }
@@ -365,29 +366,43 @@ function detectarInteresseComercial(mensagemUsuario, respostaIA) {
     
     console.log('• Palavras-chave encontradas:', palavrasEncontradas);
     
-    // Verificar se a IA mencionou serviços específicos
+    // Verificar se o USUÁRIO mencionou serviços específicos
     const servicosEncontrados = [];
-    const mencionouServicos = ['oc tel', 'oc digital', 'oc saúde', 'consultoria', 'auditoria', 'telefonia', 'marketing', 'plano de saúde'].some(servico => {
-        const encontrou = textoCompleto.includes(servico);
+    const mencionouServicos = ['telefonia', 'marketing', 'plano de saúde', 'seo', 'google ads'].some(servico => {
+        const encontrou = mensagemLimpa.includes(servico);
         if (encontrou) {
             servicosEncontrados.push(servico);
         }
         return encontrou;
     });
     
-    console.log('• Serviços mencionados:', servicosEncontrados);
+    console.log('• Serviços mencionados pelo usuário:', servicosEncontrados);
     
-    // Verificar se é uma pergunta sobre como contratar
-    const perguntaContratacao = (textoCompleto.includes('como') && 
-                               (textoCompleto.includes('contratar') || 
-                                textoCompleto.includes('solicitar') ||
-                                textoCompleto.includes('começar'))) ||
-                               textoCompleto.includes('quero contratar') ||
-                               textoCompleto.includes('interesse em');
+    // Verificar se é uma pergunta sobre como contratar (APENAS do usuário)
+    const perguntaContratacao = (mensagemLimpa.includes('como') && 
+                               (mensagemLimpa.includes('contratar') || 
+                                mensagemLimpa.includes('solicitar') ||
+                                mensagemLimpa.includes('começar'))) ||
+                               mensagemLimpa.includes('quero contratar') ||
+                               mensagemLimpa.includes('interesse em') ||
+                               mensagemLimpa.includes('preciso de') ||
+                               mensagemLimpa.includes('gostaria de');
     
     console.log('• Pergunta sobre contratação:', perguntaContratacao);
     
-    const resultado = temPalavraChave || mencionouServicos || perguntaContratacao;
+    // EVITAR falsos positivos em saudações
+    const ehSaudacao = mensagemLimpa.length < 20 && (
+        mensagemLimpa.includes('olá') ||
+        mensagemLimpa.includes('oi') ||
+        mensagemLimpa.includes('bom dia') ||
+        mensagemLimpa.includes('boa tarde') ||
+        mensagemLimpa.includes('boa noite')
+    );
+    
+    console.log('• É saudação simples:', ehSaudacao);
+    
+    // Só abrir formulário se NÃO for saudação E tiver interesse real
+    const resultado = !ehSaudacao && (temPalavraChave || mencionouServicos || perguntaContratacao);
     console.log('• RESULTADO FINAL - Abrir formulário:', resultado);
     
     return resultado;
@@ -788,6 +803,7 @@ app.post('/api/capture-lead', async (req, res) => {
 });
 
 // Rota do chat - COM DESPEDIDA + DETECÇÃO DE LEADS
+// Rota do chat - CORRIGIDA PARA RESOLVER "resultado não definido"
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId } = req.body;
@@ -807,6 +823,7 @@ app.post('/api/chat', async (req, res) => {
         let resposta;
         let deveAbrirFormulario = false;
         let fonteResposta = 'despedida';
+        let resultado = null; // ← INICIALIZAR VARIÁVEL
         
         // Se for despedida, usar resposta pré-definida
         if (tipoMensagem !== 'normal') {
@@ -815,17 +832,30 @@ app.post('/api/chat', async (req, res) => {
             fonteResposta = 'despedida';
         } else {
             // Usar IA para resposta normal
-            const resultado = await ia.gerarResposta(message, sessionId);
-            resposta = resultado.resposta;
-            fonteResposta = resultado.fonte;
-            
-            // ===== DETECÇÃO DE LEADS MANTIDA =====
-            console.log('🔍 Verificando interesse comercial...');
-            console.log('• Mensagem:', message);
-            console.log('• Resposta IA:', resposta.substring(0, 100) + '...');
-            
-            deveAbrirFormulario = detectarInteresseComercial(message, resposta);
-            console.log('• Deve abrir formulário:', deveAbrirFormulario);
+            try {
+                resultado = await ia.gerarResposta(message, sessionId);
+                resposta = resultado.resposta;
+                fonteResposta = resultado.fonte;
+                
+                // ===== DETECÇÃO DE LEADS MANTIDA =====
+                console.log('🔍 Verificando interesse comercial...');
+                console.log('• Mensagem:', message);
+                console.log('• Resposta IA:', resposta.substring(0, 100) + '...');
+                
+                deveAbrirFormulario = detectarInteresseComercial(message, resposta);
+                console.log('• Deve abrir formulário:', deveAbrirFormulario);
+                
+            } catch (error) {
+                console.error('❌ Erro ao gerar resposta da IA:', error.message);
+                resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
+                fonteResposta = 'fallback';
+            }
+        }
+        
+        // Garantir que sempre temos uma resposta
+        if (!resposta) {
+            resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
+            fonteResposta = 'fallback';
         }
         
         res.json({
@@ -857,7 +887,8 @@ app.post('/api/chat', async (req, res) => {
         console.error('❌ Erro no chat:', error.message);
         res.status(500).json({
             success: false,
-            error: 'Erro interno do servidor'
+            error: 'Erro interno do servidor',
+            reply: "Desculpe, ocorreu um erro temporário. Tente novamente em alguns instantes."
         });
     }
 });
@@ -2107,6 +2138,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
