@@ -283,6 +283,7 @@ const respostasFinalizacao = [
 ];
 
 // Função para detectar tipo de mensagem
+// Função para detectar tipo de mensagem - CORRIGIDA
 function detectarTipoMensagem(mensagem) {
     const textoLimpo = mensagem.toLowerCase().trim();
     console.log('🔍 Analisando tipo de mensagem:', textoLimpo);
@@ -297,23 +298,29 @@ function detectarTipoMensagem(mensagem) {
         textoLimpo.includes(palavra.toLowerCase())
     );
     
-    // Verificar negação/finalização
+    // Verificar negação/finalização - MELHORADA
     const ehNegacao = palavrasNegacao.some(palavra => 
         textoLimpo.includes(palavra.toLowerCase())
-    );
+    ) || textoLimpo.includes('só isso') || 
+        textoLimpo.includes('so isso') ||
+        textoLimpo.includes('isso mesmo') ||
+        textoLimpo.includes('só isso mesmo') ||
+        textoLimpo.includes('so isso mesmo');
     
     // Verificar se é uma resposta curta de finalização
-    const ehRespostaCurta = textoLimpo.length <= 15 && (
+    const ehRespostaCurta = textoLimpo.length <= 20 && (
         textoLimpo.includes('não') || 
         textoLimpo.includes('nao') ||
         textoLimpo === 'ok' ||
         textoLimpo === 'beleza' ||
-        textoLimpo === 'certo'
+        textoLimpo === 'certo' ||
+        textoLimpo.includes('só') ||
+        textoLimpo.includes('so')
     );
     
     console.log('• Agradecimento:', ehAgradecimento);
     console.log('• Despedida:', ehDespedida);
-    console.log('• Negação:', ehNegacao);
+    console.log('• Negação/Finalização:', ehNegacao);
     console.log('• Resposta curta:', ehRespostaCurta);
     
     if (ehAgradecimento) return 'agradecimento';
@@ -346,18 +353,37 @@ function gerarRespostaDespedida(tipo) {
     return respostas[indiceAleatorio];
 }
 
-// Função melhorada para detectar interesse - CORRIGIDA PARA EVITAR FALSOS POSITIVOS
+// Função melhorada para detectar interesse - MAIS PRECISA
 function detectarInteresseComercial(mensagemUsuario, respostaIA) {
     console.log('🔍 Analisando interesse comercial...');
     
-    const textoCompleto = `${mensagemUsuario} ${respostaIA}`.toLowerCase();
-    console.log('• Texto para análise:', textoCompleto.substring(0, 200) + '...');
+    const mensagemLimpa = mensagemUsuario.toLowerCase().trim();
+    console.log('• Mensagem do usuário:', mensagemLimpa);
     
-    // Verificar palavras-chave de interesse APENAS na mensagem do usuário
-    const mensagemLimpa = mensagemUsuario.toLowerCase();
+    // Palavras de ALTO interesse (sempre abre formulário)
+    const palavrasAltoInteresse = [
+        'quero contratar', 'preciso contratar', 'gostaria de contratar',
+        'quero um orçamento', 'preciso de orçamento', 'solicitar orçamento',
+        'quero uma proposta', 'preciso de proposta', 'solicitar proposta',
+        'tenho interesse', 'estou interessado', 'me interessei',
+        'quero saber mais', 'preciso saber mais', 'gostaria de saber mais'
+    ];
+    
+    const temAltoInteresse = palavrasAltoInteresse.some(frase => 
+        mensagemLimpa.includes(frase)
+    );
+    
+    console.log('• Alto interesse detectado:', temAltoInteresse);
+    
+    if (temAltoInteresse) {
+        console.log('🎯 ALTO INTERESSE - Abrir formulário: true');
+        return true;
+    }
+    
+    // Verificar palavras individuais (interesse médio)
     const palavrasEncontradas = [];
-    const temPalavraChave = palavrasChaveInteresse.some(palavra => {
-        const encontrou = mensagemLimpa.includes(palavra.toLowerCase());
+    const temPalavraChave = ['contratar', 'orçamento', 'proposta', 'cotação', 'valor', 'preço'].some(palavra => {
+        const encontrou = mensagemLimpa.includes(palavra);
         if (encontrou) {
             palavrasEncontradas.push(palavra);
         }
@@ -366,43 +392,20 @@ function detectarInteresseComercial(mensagemUsuario, respostaIA) {
     
     console.log('• Palavras-chave encontradas:', palavrasEncontradas);
     
-    // Verificar se o USUÁRIO mencionou serviços específicos
-    const servicosEncontrados = [];
-    const mencionouServicos = ['telefonia', 'marketing', 'plano de saúde', 'seo', 'google ads'].some(servico => {
-        const encontrou = mensagemLimpa.includes(servico);
-        if (encontrou) {
-            servicosEncontrados.push(servico);
-        }
-        return encontrou;
-    });
-    
-    console.log('• Serviços mencionados pelo usuário:', servicosEncontrados);
-    
-    // Verificar se é uma pergunta sobre como contratar (APENAS do usuário)
-    const perguntaContratacao = (mensagemLimpa.includes('como') && 
-                               (mensagemLimpa.includes('contratar') || 
-                                mensagemLimpa.includes('solicitar') ||
-                                mensagemLimpa.includes('começar'))) ||
-                               mensagemLimpa.includes('quero contratar') ||
-                               mensagemLimpa.includes('interesse em') ||
-                               mensagemLimpa.includes('preciso de') ||
-                               mensagemLimpa.includes('gostaria de');
-    
-    console.log('• Pergunta sobre contratação:', perguntaContratacao);
-    
     // EVITAR falsos positivos em saudações
-    const ehSaudacao = mensagemLimpa.length < 20 && (
+    const ehSaudacao = mensagemLimpa.length < 25 && (
         mensagemLimpa.includes('olá') ||
         mensagemLimpa.includes('oi') ||
         mensagemLimpa.includes('bom dia') ||
         mensagemLimpa.includes('boa tarde') ||
-        mensagemLimpa.includes('boa noite')
+        mensagemLimpa.includes('boa noite') ||
+        mensagemLimpa.includes('tudo bem')
     );
     
     console.log('• É saudação simples:', ehSaudacao);
     
-    // Só abrir formulário se NÃO for saudação E tiver interesse real
-    const resultado = !ehSaudacao && (temPalavraChave || mencionouServicos || perguntaContratacao);
+    // Só abrir formulário se NÃO for saudação E tiver interesse
+    const resultado = !ehSaudacao && temPalavraChave;
     console.log('• RESULTADO FINAL - Abrir formulário:', resultado);
     
     return resultado;
@@ -804,16 +807,23 @@ app.post('/api/capture-lead', async (req, res) => {
 
 // Rota do chat - COM DESPEDIDA + DETECÇÃO DE LEADS
 // Rota do chat - CORRIGIDA PARA RESOLVER "resultado não definido"
+// Rota do chat - CORREÇÃO DEFINITIVA FINAL
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId } = req.body;
         
+        // ===== GARANTIR QUE DADOS ESTÃO CARREGADOS =====
         if (!dadosEmpresa) {
             console.log('📊 Carregando dados da empresa...');
             dadosEmpresa = await coletarDadosGrupoOC();
-            if (dadosEmpresa) {
-                ia.carregarDadosEmpresa(dadosEmpresa);
-            }
+            console.log('📊 Dados carregados:', !!dadosEmpresa);
+            console.log('📊 Serviços total:', dadosEmpresa?.metadados?.servicosTotal || 0);
+        }
+        
+        // SEMPRE recarregar dados na IA
+        if (dadosEmpresa) {
+            ia.carregarDadosEmpresa(dadosEmpresa);
+            console.log('🤖 Dados recarregados na IA');
         }
         
         // ===== VERIFICAR TIPO DE MENSAGEM PRIMEIRO =====
@@ -823,40 +833,80 @@ app.post('/api/chat', async (req, res) => {
         let resposta;
         let deveAbrirFormulario = false;
         let fonteResposta = 'despedida';
-        let resultado = null; // ← INICIALIZAR VARIÁVEL
+        let resultado = null;
         
         // Se for despedida, usar resposta pré-definida
         if (tipoMensagem !== 'normal') {
             resposta = gerarRespostaDespedida(tipoMensagem);
             console.log('💬 Usando resposta de despedida:', resposta);
             fonteResposta = 'despedida';
+            deveAbrirFormulario = false; // NUNCA abrir formulário em despedidas
         } else {
-            // Usar IA para resposta normal
-            try {
-                resultado = await ia.gerarResposta(message, sessionId);
-                resposta = resultado.resposta;
-                fonteResposta = resultado.fonte;
+            // ===== DETECÇÃO DE LEADS PRIMEIRO =====
+            console.log('🔍 Verificando interesse comercial ANTES da IA...');
+            const interesseDetectado = detectarInteresseComercial(message, '');
+            console.log('• Interesse detectado:', interesseDetectado);
+            
+            if (interesseDetectado) {
+                // Se detectou interesse, dar resposta específica e abrir formulário
+                resposta = `🎯 **Ótimo! Vejo que você tem interesse em nossos serviços!**
+
+O **Grupo OC** oferece soluções empresariais através de 3 divisões especializadas:
+
+🔹 **OC TEL** - Soluções em Telecom
+• Telefonia fixa e móvel
+• Internet fibra e dados móveis
+• Auditoria de faturas
+
+🔹 **OC DIGITAL** - Marketing Digital
+• SEO e otimização web
+• Google Ads e campanhas
+• Estratégias personalizadas
+
+🔹 **OC SAÚDE** - Planos Empresariais
+• Planos de saúde a partir de 2 vidas
+• Consultoria em saúde corporativa
+• Otimização de custos
+
+�� **Vou abrir um formulário para você preencher seus dados e nossa equipe entrará em contato em breve!**`;
                 
-                // ===== DETECÇÃO DE LEADS MANTIDA =====
-                console.log('🔍 Verificando interesse comercial...');
-                console.log('• Mensagem:', message);
-                console.log('• Resposta IA:', resposta.substring(0, 100) + '...');
-                
-                deveAbrirFormulario = detectarInteresseComercial(message, resposta);
-                console.log('• Deve abrir formulário:', deveAbrirFormulario);
-                
-            } catch (error) {
-                console.error('❌ Erro ao gerar resposta da IA:', error.message);
-                resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
-                fonteResposta = 'fallback';
+                deveAbrirFormulario = true;
+                fonteResposta = 'interesse-detectado';
+                console.log('🎯 Resposta de interesse + formulário será aberto');
+            } else {
+                // Usar IA para resposta normal
+                try {
+                    resultado = await ia.gerarResposta(message, sessionId);
+                    resposta = resultado.resposta;
+                    fonteResposta = resultado.fonte;
+                    console.log('🤖 Resposta da IA gerada');
+                } catch (error) {
+                    console.error('❌ Erro ao gerar resposta da IA:', error.message);
+                    resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.
+
+Oferecemos soluções empresariais através de 3 divisões:
+• **OC TEL** - Soluções em Telecom
+• **OC DIGITAL** - Marketing Digital  
+• **OC SAÚDE** - Planos Empresariais
+
+Como posso ajudar você hoje?`;
+                    fonteResposta = 'fallback';
+                }
             }
         }
         
         // Garantir que sempre temos uma resposta
         if (!resposta) {
-            resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
-            fonteResposta = 'fallback';
+            resposta = "Olá! �� Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
+            fonteResposta = 'fallback-final';
         }
+        
+        console.log('📤 Enviando resposta:', {
+            tipo: tipoMensagem,
+            fonte: fonteResposta,
+            abrirFormulario: deveAbrirFormulario,
+            tamanhoResposta: resposta.length
+        });
         
         res.json({
             success: true,
@@ -866,20 +916,14 @@ app.post('/api/chat', async (req, res) => {
                 tipoMensagem: tipoMensagem,
                 fonteResposta: fonteResposta,
                 fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao',
-                urlsColetadas: {
-                    principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
-                    servicos: dadosEmpresa?.metadados?.urlServicos || 'não coletada'
-                },
                 servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0,
                 divisoes: dadosEmpresa?.metadados?.divisoes || [],
-                tokens: fonteResposta === 'despedida' ? 0 : (resultado?.tokens || 0),
                 interesseDetectado: deveAbrirFormulario,
                 mensagemOriginal: message,
                 palavrasDetectadas: tipoMensagem === 'normal' ? 
                     palavrasChaveInteresse.filter(palavra => 
                         message.toLowerCase().includes(palavra.toLowerCase())
-                    ) : [],
-                respostaTipo: tipoMensagem !== 'normal' ? 'despedida' : 'ia'
+                    ) : []
             }
         });
         
@@ -2221,6 +2265,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
