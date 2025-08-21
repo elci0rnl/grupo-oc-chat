@@ -439,7 +439,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rota principal para o widget flutuante
+// Rota principal para o widget flutuante - CORES AZUIS
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -470,17 +470,17 @@ app.get('/', (req, res) => {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        /* Botão de abrir chat */
+        /* Botão de abrir chat - AZUL */
         .chat-button {
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+            box-shadow: 0 4px 20px rgba(33, 150, 243, 0.4);
             transition: all 0.3s ease;
             border: none;
             color: white;
@@ -489,7 +489,7 @@ app.get('/', (req, res) => {
         
         .chat-button:hover {
             transform: scale(1.1);
-            box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
+            box-shadow: 0 6px 25px rgba(33, 150, 243, 0.6);
         }
         
         .chat-button.active {
@@ -527,9 +527,9 @@ app.get('/', (req, res) => {
             }
         }
         
-        /* Header do chat */
+        /* Header do chat - AZUL */
         .chat-header {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
             color: white;
             padding: 15px 20px;
             display: flex;
@@ -599,8 +599,9 @@ app.get('/', (req, res) => {
             border-bottom-left-radius: 4px;
         }
         
+        /* Mensagens do usuário - AZUL */
         .message.user .message-content {
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
             color: white;
             border-bottom-right-radius: 4px;
         }
@@ -628,14 +629,16 @@ app.get('/', (req, res) => {
             transition: border-color 0.3s;
         }
         
+        /* Input focus - AZUL */
         .input-group input:focus {
-            border-color: #4CAF50;
+            border-color: #2196F3;
         }
         
+        /* Botão enviar - AZUL */
         .input-group button {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
             color: white;
             border: none;
             border-radius: 50%;
@@ -670,15 +673,15 @@ app.get('/', (req, res) => {
         
         .welcome-message h4 {
             margin-bottom: 8px;
-            color: #4CAF50;
+            color: #2196F3;
             font-size: 16px;
         }
         
-        /* Status online */
+        /* Status online - AZUL */
         .online-status {
             width: 8px;
             height: 8px;
-            background: #4CAF50;
+            background: #2196F3;
             border-radius: 50%;
             margin-left: 8px;
             animation: pulse 2s infinite;
@@ -714,7 +717,7 @@ app.get('/', (req, res) => {
         }
         
         .demo-content h1 {
-            color: #4CAF50;
+            color: #2196F3;
             margin-bottom: 20px;
         }
         
@@ -739,8 +742,14 @@ app.get('/', (req, res) => {
         }
         
         .feature h3 {
-            color: #4CAF50;
+            color: #2196F3;
             margin-bottom: 10px;
+        }
+        
+        /* Destaque azul */
+        .highlight {
+            color: #2196F3;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -748,7 +757,7 @@ app.get('/', (req, res) => {
     <!-- Conteúdo da página de demonstração -->
     <div class="demo-content">
         <h1>🏢 Chat Grupo OC - Assistente Inteligente</h1>
-        <p>Bem-vindo ao sistema de chat inteligente do Grupo OC. Este widget pode ser integrado em qualquer site para oferecer atendimento automatizado 24/7.</p>
+        <p>Bem-vindo ao sistema de chat inteligente do <span class="highlight">Grupo OC</span>. Este widget pode ser integrado em qualquer site para oferecer atendimento automatizado 24/7.</p>
         
         <div class="demo-features">
             <div class="feature">
@@ -757,7 +766,7 @@ app.get('/', (req, res) => {
             </div>
             <div class="feature">
                 <h3>🕷️ Dados Atualizados</h3>
-                <p>Scraping automático do site para informações sempre atualizadas</p>
+                <p>Scraping automático do site grupooc.com.br para informações sempre atualizadas</p>
             </div>
             <div class="feature">
                 <h3>📱 Widget Responsivo</h3>
@@ -769,8 +778,8 @@ app.get('/', (req, res) => {
             </div>
         </div>
         
-        <p style="margin-top: 40px; color: #4CAF50; font-weight: bold;">
-            👉 Clique no botão verde no canto inferior direito para testar o chat!
+        <p style="margin-top: 40px; color: #2196F3; font-weight: bold;">
+            👉 Clique no botão azul no canto inferior direito para testar o chat!
         </p>
     </div>
 
@@ -788,7 +797,7 @@ app.get('/', (req, res) => {
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-message">
                     <h4>Olá! 👋</h4>
-                    <p>Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?</p>
+                    <p>Sou o assistente virtual do <span class="highlight">Grupo OC</span>. Como posso ajudar você hoje?</p>
                 </div>
             </div>
             
@@ -899,12 +908,10 @@ app.get('/', (req, res) => {
             }
         }
 
-        // Auto-abrir chat após 3 segundos (opcional)
-        setTimeout(() => {
-            if (!chatOpen) {
-                // toggleChat();
-            }
-        }, 3000);
+        // Mensagem de boas-vindas personalizada
+        window.onload = function() {
+            console.log('Chat Grupo OC carregado com sucesso!');
+        };
     </script>
 </body>
 </html>`);
@@ -919,6 +926,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
