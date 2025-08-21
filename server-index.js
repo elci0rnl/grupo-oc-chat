@@ -192,15 +192,45 @@ async function aguardar(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// FUNÇÃO DE SCRAPING MELHORADA - server-index.js
-// SCRAPING AINDA MAIS OTIMIZADO - OPCIONAL
+// FUNÇÃO DE SCRAPING CORRIGIDA - SUBSTITUA NO server-index.js
 async function coletarDadosGrupoOC() {
     let browser = null;
     try {
-        console.log('🕷️ Iniciando scraping PREMIUM do Grupo OC...');
+        console.log('🕷️ Iniciando scraping FORÇADO do Grupo OC...');
+        
+        // Múltiplos caminhos para encontrar Chrome
+        const possiblePaths = [
+            process.env.PUPPETEER_EXECUTABLE_PATH,
+            '/opt/render/project/src/chrome/chrome',
+            '/opt/render/project/chrome/chrome',
+            './chrome/chrome',
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/chromium'
+        ];
+        
+        let executablePath = null;
+        
+        // Tentar encontrar Chrome instalado
+        for (const path of possiblePaths) {
+            if (path) {
+                try {
+                    const fs = await import('fs');
+                    if (fs.existsSync(path)) {
+                        executablePath = path;
+                        console.log(`✅ Chrome encontrado em: ${path}`);
+                        break;
+                    }
+                } catch (error) {
+                    continue;
+                }
+            }
+        }
         
         const puppeteerConfig = {
             headless: true,
+            executablePath: executablePath,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -227,22 +257,38 @@ async function coletarDadosGrupoOC() {
                 '--safebrowsing-disable-auto-update',
                 '--enable-automation',
                 '--password-store=basic',
-                '--use-mock-keychain',
-                '--disable-ipc-flooding-protection'
+                '--use-mock-keychain'
             ]
         };
         
         try {
             browser = await puppeteer.launch(puppeteerConfig);
-            console.log('✅ Chrome PREMIUM iniciado no Render!');
+            console.log('🎉 CHROME INICIADO COM SUCESSO TOTAL!');
         } catch (chromeError) {
-            console.log('❌ Chrome falhou:', chromeError.message);
-            return await scrapingAlternativo();
+            console.log('❌ Erro ao iniciar Chrome:', chromeError.message);
+            console.log('🔄 Tentando instalar Chrome agora...');
+            
+            try {
+                const { exec } = await import('child_process');
+                const { promisify } = await import('util');
+                const execAsync = promisify(exec);
+                
+                console.log('📦 Instalando Chrome via NPX...');
+                await execAsync('npx puppeteer browsers install chrome');
+                console.log('✅ Chrome instalado! Tentando novamente...');
+                
+                browser = await puppeteer.launch(puppeteerConfig);
+                console.log('🎉 CHROME INSTALADO E INICIADO COM SUCESSO!');
+                
+            } catch (installError) {
+                console.log('❌ Falha na instalação do Chrome:', installError.message);
+                return await scrapingAlternativo();
+            }
         }
         
         const page = await browser.newPage();
         
-        // Configurações avançadas
+        // Configurações otimizadas
         await page.setUserAgent('Mozilla/5.0 (Linux; x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         await page.setViewport({ width: 1920, height: 1080 });
         await page.setDefaultTimeout(30000);
@@ -263,30 +309,23 @@ async function coletarDadosGrupoOC() {
             servicos: { servicos: [], beneficios: [], detalhes: [] },
             metadados: {
                 dataColeta: new Date().toISOString(),
-                fonte: 'scraping-premium-render',
-                versao: '6.0-premium',
+                fonte: 'scraping-real-forcado',
+                versao: '7.0-forcado',
                 urlPrincipal: 'https://grupooc.com.br/',
                 urlServicos: 'https://grupooc.com.br/nosso-servico/',
-                status: 'premium-ativo'
+                status: 'chrome-forcado'
             }
         };
         
-        // ===== PÁGINA PRINCIPAL PREMIUM =====
+        // ===== PÁGINA PRINCIPAL =====
         try {
-            console.log('📄 Scraping PREMIUM - Página principal...');
+            console.log('📄 Scraping REAL - Página principal (grupooc.com.br)...');
             await page.goto('https://grupooc.com.br/', { 
                 waitUntil: 'networkidle2', 
                 timeout: 30000 
             });
             
-            // Aguardar carregamento dinâmico
             await page.waitForTimeout(5000);
-            
-            // Scroll para carregar conteúdo lazy
-            await page.evaluate(() => {
-                window.scrollTo(0, document.body.scrollHeight);
-            });
-            await page.waitForTimeout(2000);
             
             const dadosPrincipal = await page.evaluate(() => {
                 const textos = [];
@@ -298,83 +337,61 @@ async function coletarDadosGrupoOC() {
                     .elementor-widget-text-editor,
                     .wp-block-heading,
                     .entry-content p,
-                    .content p,
-                    [class*="heading"],
-                    [class*="title"],
-                    [class*="text"]
+                    .content p
                 `);
                 
                 elementos.forEach(el => {
                     const texto = el.textContent?.trim();
                     if (texto && 
-                        texto.length > 15 && 
-                        texto.length < 1500 && 
+                        texto.length > 20 && 
+                        texto.length < 1000 && 
                         !texto.includes('©') && 
                         !texto.includes('cookie') &&
-                        !texto.includes('JavaScript') &&
-                        !texto.toLowerCase().includes('menu')) {
+                        !texto.includes('JavaScript')) {
                         textos.push(texto);
                     }
                 });
                 
-                return [...new Set(textos)]; // Remove duplicatas
+                return [...new Set(textos)];
             });
             
             dados.empresa.textosPrincipais = dadosPrincipal.slice(0, 25);
-            console.log(`✅ Página principal PREMIUM: ${dadosPrincipal.length} textos únicos`);
+            console.log(`✅ Página principal REAL: ${dadosPrincipal.length} textos coletados`);
             
         } catch (error) {
             console.log('⚠️ Erro na página principal:', error.message);
         }
         
-        // ===== PÁGINA DE SERVIÇOS PREMIUM =====
+        // ===== PÁGINA DE SERVIÇOS =====
         try {
-            console.log('🛠️ Scraping PREMIUM - Página de serviços...');
+            console.log('🛠️ Scraping REAL - Página de serviços (grupooc.com.br/nosso-servico)...');
             await page.goto('https://grupooc.com.br/nosso-servico/', { 
                 waitUntil: 'networkidle2', 
                 timeout: 30000 
             });
             
-            // Aguardar carregamento dinâmico
             await page.waitForTimeout(5000);
-            
-            // Scroll para carregar conteúdo lazy
-            await page.evaluate(() => {
-                window.scrollTo(0, document.body.scrollHeight);
-            });
-            await page.waitForTimeout(2000);
             
             const dadosServicos = await page.evaluate(() => {
                 const servicos = [];
                 const detalhes = [];
                 
-                // Seletores premium para serviços
                 const seletoresServicos = [
                     '.elementor-heading-title',
                     '.elementor-text-editor h1, .elementor-text-editor h2, .elementor-text-editor h3, .elementor-text-editor h4',
                     '.elementor-widget-heading h1, .elementor-widget-heading h2, .elementor-widget-heading h3, .elementor-widget-heading h4',
                     'h1, h2, h3, h4, h5',
                     '.wp-block-heading',
-                    '.entry-title',
-                    '[class*="service"] h1, [class*="service"] h2, [class*="service"] h3',
-                    '[class*="titulo"]',
-                    '.content h1, .content h2, .content h3'
+                    '.entry-title'
                 ];
                 
                 seletoresServicos.forEach(seletor => {
                     const elementos = document.querySelectorAll(seletor);
                     elementos.forEach(el => {
                         const titulo = el.textContent?.trim();
-                        if (titulo && 
-                            titulo.length > 5 && 
-                            titulo.length < 400 && 
-                            !titulo.includes('©') &&
-                            !titulo.toLowerCase().includes('menu') &&
-                            !titulo.toLowerCase().includes('footer')) {
+                        if (titulo && titulo.length > 5 && titulo.length < 300) {
                             
                             let descricao = titulo;
-                            
-                            // Buscar descrição em múltiplos lugares
                             const proximoP = el.nextElementSibling;
                             if (proximoP && proximoP.tagName === 'P') {
                                 const textoP = proximoP.textContent?.trim();
@@ -383,65 +400,31 @@ async function coletarDadosGrupoOC() {
                                 }
                             }
                             
-                            // Buscar no container pai
-                            const container = el.closest('.elementor-widget, .wp-block, .service-item, .content-block');
-                            if (container && descricao === titulo) {
-                                const descP = container.querySelector('p');
-                                if (descP) {
-                                    const textoDesc = descP.textContent?.trim();
-                                    if (textoDesc && textoDesc.length > 20) {
-                                        descricao = textoDesc;
-                                    }
-                                }
-                            }
-                            
                             servicos.push({
                                 nome: titulo,
-                                descricao: descricao,
-                                fonte: seletor
+                                descricao: descricao
                             });
                         }
                     });
                 });
                 
-                // Coletar parágrafos detalhados
-                const paragrafos = document.querySelectorAll(`
-                    p,
-                    .elementor-text-editor p,
-                    .elementor-widget-text-editor p,
-                    .wp-block-paragraph,
-                    .entry-content p,
-                    .content p
-                `);
-                
+                const paragrafos = document.querySelectorAll('p, .elementor-text-editor p');
                 paragrafos.forEach(p => {
                     const texto = p.textContent?.trim();
-                    if (texto && 
-                        texto.length > 30 && 
-                        texto.length < 1200 && 
-                        !texto.includes('©') && 
-                        !texto.includes('cookie') &&
-                        !texto.toLowerCase().includes('menu')) {
+                    if (texto && texto.length > 30 && texto.length < 800) {
                         detalhes.push(texto);
                     }
                 });
                 
-                return { 
-                    servicos: [...new Set(servicos.map(s => JSON.stringify(s)))].map(s => JSON.parse(s)), 
-                    detalhes: [...new Set(detalhes)] 
-                };
+                return { servicos, detalhes };
             });
             
-            // Filtrar serviços únicos e relevantes
             const servicosUnicos = [];
             const nomesVistos = new Set();
             
             dadosServicos.servicos.forEach(servico => {
                 const nomeNormalizado = servico.nome.toLowerCase().trim();
-                if (!nomesVistos.has(nomeNormalizado) && 
-                    servico.nome.length > 5 && 
-                    !servico.nome.toLowerCase().includes('grupo oc') &&
-                    !servico.nome.toLowerCase().includes('nosso')) {
+                if (!nomesVistos.has(nomeNormalizado) && servico.nome.length > 5) {
                     nomesVistos.add(nomeNormalizado);
                     servicosUnicos.push({
                         nome: servico.nome,
@@ -453,20 +436,19 @@ async function coletarDadosGrupoOC() {
             dados.servicos.servicos = servicosUnicos.slice(0, 20);
             dados.servicos.detalhes = dadosServicos.detalhes.slice(0, 30);
             
-            console.log(`✅ Página de serviços PREMIUM: ${servicosUnicos.length} serviços únicos`);
-            console.log(`📝 Detalhes coletados: ${dadosServicos.detalhes.length}`);
+            console.log(`✅ Página de serviços REAL: ${servicosUnicos.length} serviços coletados`);
             
         } catch (error) {
             console.log('⚠️ Erro na página de serviços:', error.message);
         }
         
-        dados.metadados.status = 'sucesso-premium-render';
-        console.log('🎉 SCRAPING PREMIUM CONCLUÍDO COM SUCESSO TOTAL!');
+        dados.metadados.status = 'sucesso-real-forcado';
+        console.log('🎉 SCRAPING REAL CONCLUÍDO COM SUCESSO TOTAL!');
         
         return dados;
         
     } catch (error) {
-        console.error('❌ Erro no scraping premium:', error.message);
+        console.error('❌ Erro no scraping real:', error.message);
         return await scrapingAlternativo();
     } finally {
         if (browser) {
@@ -1254,6 +1236,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
