@@ -801,11 +801,8 @@ app.post('/api/capture-lead', async (req, res) => {
     }
 });
 
-// ===== SISTEMA DE COLETA CONVERSACIONAL =====
-const sessoesLead = new Map(); // Armazenar estado das sessões
-
-// Estados da coleta de lead
-const ESTADOS_LEAD = {
+// ===== SISTEMA DE COLETA CONVERSACIONAL - VERSÃO LIMPA =====
+const estadosLead = {
     NORMAL: 'normal',
     COLETANDO_NOME: 'coletando_nome',
     COLETANDO_TELEFONE: 'coletando_telefone',
@@ -814,10 +811,12 @@ const ESTADOS_LEAD = {
     FINALIZADO: 'finalizado'
 };
 
+const sessionsLead = new Map(); // ← NOME DIFERENTE PARA EVITAR CONFLITO
+
 // Função para iniciar coleta de lead
 function iniciarColetaLead(sessionId) {
-    sessoesLead.set(sessionId, {
-        estado: ESTADOS_LEAD.COLETANDO_NOME,
+    sessionsLead.set(sessionId, {
+        estado: estadosLead.COLETANDO_NOME,
         dados: {},
         iniciadoEm: new Date().toISOString()
     });
@@ -826,41 +825,41 @@ function iniciarColetaLead(sessionId) {
 
 // Função para processar coleta de lead
 function processarColetaLead(sessionId, mensagem) {
-    const sessao = sessoesLead.get(sessionId);
+    const sessao = sessionsLead.get(sessionId);
     if (!sessao) return null;
     
     console.log('📝 Processando coleta - Estado:', sessao.estado, 'Mensagem:', mensagem);
     
     switch (sessao.estado) {
-        case ESTADOS_LEAD.COLETANDO_NOME:
+        case estadosLead.COLETANDO_NOME:
             sessao.dados.nome = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_TELEFONE;
+            sessao.estado = estadosLead.COLETANDO_TELEFONE;
             return {
                 resposta: `Ótimo, **${sessao.dados.nome}**! 📱\n\nAgora me informe seu **telefone ou WhatsApp** para contato:`,
                 continuarColeta: true
             };
             
-        case ESTADOS_LEAD.COLETANDO_TELEFONE:
+        case estadosLead.COLETANDO_TELEFONE:
             sessao.dados.telefone = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_EMAIL;
+            sessao.estado = estadosLead.COLETANDO_EMAIL;
             return {
                 resposta: `Perfeito! 📧\n\nAgora preciso do seu **email** para enviarmos informações detalhadas:`,
                 continuarColeta: true
             };
             
-        case ESTADOS_LEAD.COLETANDO_EMAIL:
+        case estadosLead.COLETANDO_EMAIL:
             sessao.dados.email = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_INTERESSE;
+            sessao.estado = estadosLead.COLETANDO_INTERESSE;
             return {
                 resposta: `Excelente! 🎯\n\nPor último, me conte **qual serviço tem mais interesse**:\n\n🔹 **OC TEL** - Telefonia, Internet, Dados Móveis\n🔹 **OC DIGITAL** - SEO, Google Ads, Marketing Digital\n🔹 **OC SAÚDE** - Planos de Saúde Empresariais\n🔹 **Consultoria Geral** - Múltiplas soluções\n\nOu descreva sua necessidade específica:`,
                 continuarColeta: true
             };
             
-        case ESTADOS_LEAD.COLETANDO_INTERESSE:
+        case estadosLead.COLETANDO_INTERESSE:
             sessao.dados.interesse = mensagem.trim();
             sessao.dados.origem = 'Chat Conversacional - Grupo OC';
             sessao.dados.timestamp = new Date().toISOString();
-            sessao.estado = ESTADOS_LEAD.FINALIZADO;
+            sessao.estado = estadosLead.FINALIZADO;
             
             // Enviar lead por email
             console.log('📧 Enviando lead coletado:', sessao.dados);
@@ -870,120 +869,12 @@ function processarColetaLead(sessionId, mensagem) {
             
             // Limpar sessão após 5 minutos
             setTimeout(() => {
-                sessoesLead.delete(sessionId);
+                sessionsLead.delete(sessionId);
                 console.log('🧹 Sessão de lead limpa:', sessionId);
             }, 5 * 60 * 1000);
             
             return {
                 resposta: `🎉 **Perfeito, ${sessao.dados.nome}!**\n\nSeus dados foram registrados com sucesso:\n\n✅ **Nome:** ${sessao.dados.nome}\n✅ **Telefone:** ${sessao.dados.telefone}\n✅ **Email:** ${sessao.dados.email}\n✅ **Interesse:** ${sessao.dados.interesse}\n\n📞 **Nossa equipe entrará em contato em breve!**\n\n💬 Posso ajudar em mais alguma coisa sobre o Grupo OC?`,
-                continuarColeta: false,
-                leadFinalizado: true
-            };
-            
-        default:
-            return null;
-    }
-}
-
-// ===== SISTEMA DE COLETA CONVERSACIONAL =====
-const sessoesLead = new Map(); // Armazenar estado das sessões
-
-// Estados da coleta de lead
-const ESTADOS_LEAD = {
-    NORMAL: 'normal',
-    COLETANDO_NOME: 'coletando_nome',
-    COLETANDO_TELEFONE: 'coletando_telefone',
-    COLETANDO_EMAIL: 'coletando_email',
-    COLETANDO_INTERESSE: 'coletando_interesse',
-    FINALIZADO: 'finalizado'
-};
-
-// Função para iniciar coleta de lead
-function iniciarColetaLead(sessionId) {
-    sessoesLead.set(sessionId, {
-        estado: ESTADOS_LEAD.COLETANDO_NOME,
-        dados: {},
-        iniciadoEm: new Date().toISOString()
-    });
-    console.log('🎯 Iniciando coleta de lead para sessão:', sessionId);
-}
-
-// Função para processar coleta de lead
-function processarColetaLead(sessionId, mensagem) {
-    const sessao = sessoesLead.get(sessionId);
-    if (!sessao) return null;
-    
-    console.log('📝 Processando coleta - Estado:', sessao.estado, 'Mensagem:', mensagem);
-    
-    switch (sessao.estado) {
-        case ESTADOS_LEAD.COLETANDO_NOME:
-            sessao.dados.nome = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_TELEFONE;
-            return {
-                resposta: `Ótimo, **${sessao.dados.nome}**! 📱
-
-Agora me informe seu **telefone ou WhatsApp** para contato:`,
-                continuarColeta: true
-            };
-            
-        case ESTADOS_LEAD.COLETANDO_TELEFONE:
-            sessao.dados.telefone = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_EMAIL;
-            return {
-                resposta: `Perfeito! 📧
-
-Agora preciso do seu **email** para enviarmos informações detalhadas:`,
-                continuarColeta: true
-            };
-            
-        case ESTADOS_LEAD.COLETANDO_EMAIL:
-            sessao.dados.email = mensagem.trim();
-            sessao.estado = ESTADOS_LEAD.COLETANDO_INTERESSE;
-            return {
-                resposta: `Excelente! 🎯
-
-Por último, me conte **qual serviço tem mais interesse**:
-
-🔹 **OC TEL** - Telefonia, Internet, Dados Móveis
-🔹 **OC DIGITAL** - SEO, Google Ads, Marketing Digital
-🔹 **OC SAÚDE** - Planos de Saúde Empresariais
-🔹 **Consultoria Geral** - Múltiplas soluções
-
-Ou descreva sua necessidade específica:`,
-                continuarColeta: true
-            };
-            
-        case ESTADOS_LEAD.COLETANDO_INTERESSE:
-            sessao.dados.interesse = mensagem.trim();
-            sessao.dados.origem = 'Chat Conversacional - Grupo OC';
-            sessao.dados.timestamp = new Date().toISOString();
-            sessao.estado = ESTADOS_LEAD.FINALIZADO;
-            
-            // Enviar lead por email
-            console.log('📧 Enviando lead coletado:', sessao.dados);
-            enviarEmailLead(sessao.dados).then(resultado => {
-                console.log('📧 Resultado envio email:', resultado);
-            });
-            
-            // Limpar sessão após 5 minutos
-            setTimeout(() => {
-                sessoesLead.delete(sessionId);
-                console.log('🧹 Sessão de lead limpa:', sessionId);
-            }, 5 * 60 * 1000);
-            
-            return {
-                resposta: `🎉 **Perfeito, ${sessao.dados.nome}!**
-
-Seus dados foram registrados com sucesso:
-
-✅ **Nome:** ${sessao.dados.nome}
-✅ **Telefone:** ${sessao.dados.telefone}
-✅ **Email:** ${sessao.dados.email}
-✅ **Interesse:** ${sessao.dados.interesse}
-
-📞 **Nossa equipe entrará em contato em breve!**
-
-💬 Posso ajudar em mais alguma coisa sobre o Grupo OC?`,
                 continuarColeta: false,
                 leadFinalizado: true
             };
@@ -1009,8 +900,8 @@ app.post('/api/chat', async (req, res) => {
         }
         
         // ===== VERIFICAR SE ESTÁ EM PROCESSO DE COLETA =====
-        const sessaoLead = sessoesLead.get(sessionId);
-        if (sessaoLead && sessaoLead.estado !== ESTADOS_LEAD.FINALIZADO) {
+        const sessaoLead = sessionsLead.get(sessionId); 
+if (sessaoLead && sessaoLead.estado !== estadosLead.FINALIZADO) {
             console.log('📝 Processando coleta de lead...');
             const resultado = processarColetaLead(sessionId, message);
             
