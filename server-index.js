@@ -1,6 +1,7 @@
 ﻿import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import puppeteer from 'puppeteer';
 import GrupoOCIA from './modules/ia.js';
 import nodemailer from 'nodemailer';
 
@@ -191,269 +192,172 @@ async function aguardar(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// FUNÇÃO DE SCRAPING CORRIGIDA - SUBSTITUA NO server-index.js
+// ===== FUNÇÃO DE SCRAPING REAL =====
 async function coletarDadosGrupoOC() {
+    console.log('📊 Iniciando scraping REAL do Grupo OC...');
+    
     let browser = null;
     try {
-        console.log('🕷️ Iniciando scraping FORÇADO do Grupo OC...');
-        
-        // Múltiplos caminhos para encontrar Chrome
-        const possiblePaths = [
-            process.env.PUPPETEER_EXECUTABLE_PATH,
-            '/opt/render/project/src/chrome/chrome',
-            '/opt/render/project/chrome/chrome',
-            './chrome/chrome',
-            '/usr/bin/google-chrome',
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium'
-        ];
-        
-        let executablePath = null;
-        
-        // Tentar encontrar Chrome instalado
-        for (const path of possiblePaths) {
-            if (path) {
-                try {
-                    const fs = await import('fs');
-                    if (fs.existsSync(path)) {
-                        executablePath = path;
-                        console.log(`✅ Chrome encontrado em: ${path}`);
-                        break;
-                    }
-                } catch (error) {
-                    continue;
+        // Tentar usar Puppeteer se disponível
+        if (typeof puppeteer !== 'undefined') {
+            console.log('🚀 Iniciando Chrome para scraping...');
+            browser = await puppeteer.launch({
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-gpu'
+                ]
+            });
+
+            const page = await browser.newPage();
+            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+
+            const dadosColetados = {
+                empresa: { textosPrincipais: [], sobre: '', diferenciais: [] },
+                servicos: { servicos: [], beneficios: [], detalhes: [] },
+                metadados: {
+                    dataColeta: new Date().toISOString(),
+                    fonte: 'scraping-real',
+                    versao: '2.0-real',
+                    urlPrincipal: 'https://grupooc.com.br/',
+                    urlServicos: 'https://grupooc.com.br/nosso-servico/',
+                    status: 'scraping-real-funcionando'
                 }
-            }
-        }
-        
-        const puppeteerConfig = {
-            headless: true,
-            executablePath: executablePath,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--single-process',
-                '--disable-gpu',
-                '--disable-web-security',
-                '--disable-features=VizDisplayCompositor',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows',
-                '--disable-renderer-backgrounding',
-                '--disable-extensions',
-                '--disable-plugins',
-                '--disable-default-apps',
-                '--disable-hang-monitor',
-                '--disable-prompt-on-repost',
-                '--disable-sync',
-                '--disable-translate',
-                '--metrics-recording-only',
-                '--no-default-browser-check',
-                '--safebrowsing-disable-auto-update',
-                '--enable-automation',
-                '--password-store=basic',
-                '--use-mock-keychain'
-            ]
-        };
-        
-        try {
-            browser = await puppeteer.launch(puppeteerConfig);
-            console.log('🎉 CHROME INICIADO COM SUCESSO TOTAL!');
-        } catch (chromeError) {
-            console.log('❌ Erro ao iniciar Chrome:', chromeError.message);
-            console.log('🔄 Tentando instalar Chrome agora...');
-            
+            };
+
+            // Scraping da página principal
+            console.log('📊 Coletando dados da página principal...');
             try {
-                const { exec } = await import('child_process');
-                const { promisify } = await import('util');
-                const execAsync = promisify(exec);
-                
-                console.log('📦 Instalando Chrome via NPX...');
-                await execAsync('npx puppeteer browsers install chrome');
-                console.log('✅ Chrome instalado! Tentando novamente...');
-                
-                browser = await puppeteer.launch(puppeteerConfig);
-                console.log('🎉 CHROME INSTALADO E INICIADO COM SUCESSO!');
-                
-            } catch (installError) {
-                console.log('❌ Falha na instalação do Chrome:', installError.message);
-                return await scrapingAlternativo();
-            }
-        }
-        
-        const page = await browser.newPage();
-        
-        // Configurações otimizadas
-        await page.setUserAgent('Mozilla/5.0 (Linux; x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        await page.setViewport({ width: 1920, height: 1080 });
-        await page.setDefaultTimeout(30000);
-        
-        // Interceptar requests para otimizar
-        await page.setRequestInterception(true);
-        page.on('request', (req) => {
-            const resourceType = req.resourceType();
-            if(['stylesheet', 'image', 'font', 'media'].includes(resourceType)){
-                req.abort();
-            } else {
-                req.continue();
-            }
-        });
-        
-        const dados = {
-            empresa: { textosPrincipais: [], diferenciais: [], sobre: "" },
-            servicos: { servicos: [], beneficios: [], detalhes: [] },
-            metadados: {
-                dataColeta: new Date().toISOString(),
-                fonte: 'scraping-real-forcado',
-                versao: '7.0-forcado',
-                urlPrincipal: 'https://grupooc.com.br/',
-                urlServicos: 'https://grupooc.com.br/nosso-servico/',
-                status: 'chrome-forcado'
-            }
-        };
-        
-        // ===== PÁGINA PRINCIPAL =====
-        try {
-            console.log('📄 Scraping REAL - Página principal (grupooc.com.br)...');
-            await page.goto('https://grupooc.com.br/', { 
-                waitUntil: 'networkidle2', 
-                timeout: 30000 
-            });
-            
-            await page.waitForTimeout(5000);
-            
-            const dadosPrincipal = await page.evaluate(() => {
-                const textos = [];
-                const elementos = document.querySelectorAll(`
-                    h1, h2, h3, h4, h5, h6,
-                    p,
-                    .elementor-heading-title,
-                    .elementor-text-editor,
-                    .elementor-widget-text-editor,
-                    .wp-block-heading,
-                    .entry-content p,
-                    .content p
-                `);
-                
-                elementos.forEach(el => {
-                    const texto = el.textContent?.trim();
-                    if (texto && 
-                        texto.length > 20 && 
-                        texto.length < 1000 && 
-                        !texto.includes('©') && 
-                        !texto.includes('cookie') &&
-                        !texto.includes('JavaScript')) {
-                        textos.push(texto);
-                    }
+                await page.goto('https://grupooc.com.br/', { 
+                    waitUntil: 'networkidle2', 
+                    timeout: 30000 
                 });
-                
-                return [...new Set(textos)];
-            });
-            
-            dados.empresa.textosPrincipais = dadosPrincipal.slice(0, 25);
-            console.log(`✅ Página principal REAL: ${dadosPrincipal.length} textos coletados`);
-            
-        } catch (error) {
-            console.log('⚠️ Erro na página principal:', error.message);
-        }
-        
-        // ===== PÁGINA DE SERVIÇOS =====
-        try {
-            console.log('🛠️ Scraping REAL - Página de serviços (grupooc.com.br/nosso-servico)...');
-            await page.goto('https://grupooc.com.br/nosso-servico/', { 
-                waitUntil: 'networkidle2', 
-                timeout: 30000 
-            });
-            
-            await page.waitForTimeout(5000);
-            
-            const dadosServicos = await page.evaluate(() => {
-                const servicos = [];
-                const detalhes = [];
-                
-                const seletoresServicos = [
-                    '.elementor-heading-title',
-                    '.elementor-text-editor h1, .elementor-text-editor h2, .elementor-text-editor h3, .elementor-text-editor h4',
-                    '.elementor-widget-heading h1, .elementor-widget-heading h2, .elementor-widget-heading h3, .elementor-widget-heading h4',
-                    'h1, h2, h3, h4, h5',
-                    '.wp-block-heading',
-                    '.entry-title'
-                ];
-                
-                seletoresServicos.forEach(seletor => {
-                    const elementos = document.querySelectorAll(seletor);
-                    elementos.forEach(el => {
-                        const titulo = el.textContent?.trim();
-                        if (titulo && titulo.length > 5 && titulo.length < 300) {
-                            
-                            let descricao = titulo;
-                            const proximoP = el.nextElementSibling;
-                            if (proximoP && proximoP.tagName === 'P') {
-                                const textoP = proximoP.textContent?.trim();
-                                if (textoP && textoP.length > 20) {
-                                    descricao = textoP;
-                                }
-                            }
-                            
-                            servicos.push({
-                                nome: titulo,
-                                descricao: descricao
-                            });
+
+                // Coletar textos principais
+                const textosPrincipais = await page.evaluate(() => {
+                    const textos = [];
+                    
+                    // Títulos principais
+                    const titulos = document.querySelectorAll('h1, h2, h3, .hero-title, .main-title, .section-title');
+                    titulos.forEach(el => {
+                        const texto = el.textContent?.trim();
+                        if (texto && texto.length > 10 && texto.length < 200) {
+                            textos.push(texto);
                         }
                     });
-                });
-                
-                const paragrafos = document.querySelectorAll('p, .elementor-text-editor p');
-                paragrafos.forEach(p => {
-                    const texto = p.textContent?.trim();
-                    if (texto && texto.length > 30 && texto.length < 800) {
-                        detalhes.push(texto);
-                    }
-                });
-                
-                return { servicos, detalhes };
-            });
-            
-            const servicosUnicos = [];
-            const nomesVistos = new Set();
-            
-            dadosServicos.servicos.forEach(servico => {
-                const nomeNormalizado = servico.nome.toLowerCase().trim();
-                if (!nomesVistos.has(nomeNormalizado) && servico.nome.length > 5) {
-                    nomesVistos.add(nomeNormalizado);
-                    servicosUnicos.push({
-                        nome: servico.nome,
-                        descricao: servico.descricao
+
+                    // Parágrafos importantes
+                    const paragrafos = document.querySelectorAll('p, .description, .intro, .about-text');
+                    paragrafos.forEach(el => {
+                        const texto = el.textContent?.trim();
+                        if (texto && texto.length > 50 && texto.length < 500) {
+                            textos.push(texto);
+                        }
                     });
-                }
-            });
-            
-            dados.servicos.servicos = servicosUnicos.slice(0, 20);
-            dados.servicos.detalhes = dadosServicos.detalhes.slice(0, 30);
-            
-            console.log(`✅ Página de serviços REAL: ${servicosUnicos.length} serviços coletados`);
-            
-        } catch (error) {
-            console.log('⚠️ Erro na página de serviços:', error.message);
-        }
-        
-        dados.metadados.status = 'sucesso-real-forcado';
-        console.log('🎉 SCRAPING REAL CONCLUÍDO COM SUCESSO TOTAL!');
-        
-        return dados;
-        
-    } catch (error) {
-        console.error('❌ Erro no scraping real:', error.message);
-        return await scrapingAlternativo();
-    } finally {
-        if (browser) {
+
+                    return [...new Set(textos)].slice(0, 10);
+                });
+
+                dadosColetados.empresa.textosPrincipais = textosPrincipais;
+                console.log(`✅ Coletados ${textosPrincipais.length} textos da página principal`);
+
+            } catch (error) {
+                console.log('⚠️ Erro no scraping da página principal:', error.message);
+            }
+
+            // Scraping da página de serviços
+            console.log('📊 Coletando dados da página de serviços...');
+            try {
+                await page.goto('https://grupooc.com.br/nosso-servico/', { 
+                    waitUntil: 'networkidle2', 
+                    timeout: 30000 
+                });
+
+                // Coletar serviços
+                const servicos = await page.evaluate(() => {
+                    const servicosEncontrados = [];
+                    
+                    // Buscar por diferentes estruturas de serviços
+                    const seletores = [
+                        '.service-item',
+                        '.servico-item', 
+                        '.service-card',
+                        '.service-box',
+                        '.card',
+                        '.item-servico',
+                        '[class*="service"]',
+                        '[class*="servico"]'
+                    ];
+
+                    seletores.forEach(seletor => {
+                        const elementos = document.querySelectorAll(seletor);
+                        elementos.forEach(el => {
+                            const titulo = el.querySelector('h1, h2, h3, h4, .title, .nome, .service-title')?.textContent?.trim();
+                            const descricao = el.querySelector('p, .description, .desc, .texto')?.textContent?.trim();
+                            
+                            if (titulo && titulo.length > 5) {
+                                servicosEncontrados.push({
+                                    nome: titulo,
+                                    descricao: descricao || 'Serviço especializado do Grupo OC'
+                                });
+                            }
+                        });
+                    });
+
+                    // Se não encontrou serviços estruturados, buscar por títulos e textos
+                    if (servicosEncontrados.length === 0) {
+                        const titulos = document.querySelectorAll('h1, h2, h3, h4');
+                        titulos.forEach(titulo => {
+                            const texto = titulo.textContent?.trim();
+                            if (texto && texto.length > 5 && texto.length < 100) {
+                                const proximoP = titulo.nextElementSibling?.tagName === 'P' ? 
+                                    titulo.nextElementSibling.textContent?.trim() : '';
+                                
+                                servicosEncontrados.push({
+                                    nome: texto,
+                                    descricao: proximoP || 'Serviço especializado oferecido pelo Grupo OC'
+                                });
+                            }
+                        });
+                    }
+
+                    return [...new Set(servicosEncontrados.map(s => JSON.stringify(s)))].map(s => JSON.parse(s)).slice(0, 15);
+                });
+
+                dadosColetados.servicos.servicos = servicos;
+                dadosColetados.metadados.servicosTotal = servicos.length;
+                console.log(`✅ Coletados ${servicos.length} serviços da página de serviços`);
+
+            } catch (error) {
+                console.log('⚠️ Erro no scraping da página de serviços:', error.message);
+            }
+
             await browser.close();
+
+            // Verificar se coletou dados suficientes
+            if (dadosColetados.servicos.servicos.length > 0 || dadosColetados.empresa.textosPrincipais.length > 0) {
+                console.log('✅ Scraping real concluído com sucesso!');
+                console.log(`📊 Total de serviços: ${dadosColetados.servicos.servicos.length}`);
+                console.log(`📊 Total de textos: ${dadosColetados.empresa.textosPrincipais.length}`);
+                return dadosColetados;
+            }
+        }
+    } catch (error) {
+        console.log('❌ Erro no scraping real:', error.message);
+        if (browser) {
+            try { await browser.close(); } catch (e) {}
         }
     }
+
+    // Fallback para dados estáticos se scraping falhar
+    console.log('🔄 Scraping real falhou, usando dados estáticos como backup...');
+    return gerarDadosEstaticosAvancados();
 }
 
 // Scraping alternativo sem Puppeteer
@@ -1235,6 +1139,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
