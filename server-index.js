@@ -431,24 +431,17 @@ app.post('/api/chat', async (req, res) => {
     }
 });
 
-// Configurar Content Security Policy
+// Middleware para Content Security Policy mais permissivo
 app.use((req, res, next) => {
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: *; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' *; " +
-    "style-src 'self' 'unsafe-inline' *; " +
-    "img-src 'self' data: blob: *; " +
-    "font-src 'self' data: *; " +
-    "connect-src 'self' *; " +
-    "frame-src 'self' *;"
-  );
+  res.removeHeader('Content-Security-Policy');
+  res.removeHeader('X-Content-Security-Policy');
+  res.removeHeader('X-WebKit-CSP');
   next();
 });
 
-// Rota principal - Página do Chat
+// Rota principal para o chat
 app.get('/', (req, res) => {
-  const htmlContent = `
-<!DOCTYPE html>
+  res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -593,9 +586,23 @@ app.get('/', (req, res) => {
             margin-bottom: 10px;
             color: #333;
         }
+        
+        .status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
+    <div class="status">🟢 Online</div>
+    
     <div class="chat-container">
         <div class="chat-header">
             <h1>🤖 Chat TIM Corp</h1>
@@ -634,7 +641,7 @@ app.get('/', (req, res) => {
 
         function addMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
-            messageDiv.className = \`message \${isUser ? 'user' : 'bot'}\`;
+            messageDiv.className = 'message ' + (isUser ? 'user' : 'bot');
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
@@ -681,25 +688,27 @@ app.get('/', (req, res) => {
                 hideTyping();
                 
                 if (data.success) {
-                    addMessage(data.message);
+                    addMessage(data.reply);
                 } else {
                     addMessage('Desculpe, ocorreu um erro. Tente novamente.');
                 }
             } catch (error) {
                 hideTyping();
                 addMessage('Erro de conexão. Verifique sua internet e tente novamente.');
+                console.error('Erro:', error);
             }
         }
 
         window.onload = function() {
             messageInput.focus();
+            console.log('Chat TIM Corp carregado com sucesso!');
         };
     </script>
 </body>
-</html>\`;
-
-  res.send(htmlContent);
+</html>`);
 });
+
+
 
 // Iniciar servidor
 app.listen(PORT, () => {
