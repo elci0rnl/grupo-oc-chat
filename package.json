@@ -1,16 +1,12 @@
 {
   "name": "grupo-oc-chat",
   "version": "1.0.0",
-  "description": "Sistema de chat inteligente para Grupo OC com IA e scraping",
+  "description": "Sistema de chat inteligente para Grupo OC",
   "type": "module",
   "main": "server-index.js",
   "scripts": {
     "start": "node server-index.js",
-    "build": "npm run install-chrome",
-    "install-chrome": "npx puppeteer browsers install chrome --path ./chrome",
-    "postinstall": "npm run install-chrome",
-    "dev": "nodemon server-index.js",
-    "test": "echo 'Tests for Grupo OC chat system'"
+    "build": "echo 'Build completed successfully'"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -18,31 +14,18 @@
     "dotenv": "^16.3.1",
     "puppeteer": "^21.5.2",
     "openai": "^4.20.1",
-    "nodemailer": "^6.9.7",
-    "cheerio": "^1.0.0-rc.12",
-    "axios": "^1.6.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemailer": "^6.9.7"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": ">=18.0.0"
   },
   "keywords": [
     "grupo-oc",
     "chat",
     "ia",
-    "scraping",
-    "consultoria",
-    "empresarial"
+    "consultoria"
   ],
   "author": "Grupo OC",
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/elci0rnl/grupo-oc-chat.git"
-  },
   "private": true
 }
-
