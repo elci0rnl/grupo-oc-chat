@@ -1087,7 +1087,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rota específica para o widget flutuante (APENAS O BALÃO)
+// Rota específica para o widget flutuante - SESSÃO CORRIGIDA
 app.get('/widget', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -1358,157 +1358,6 @@ app.get('/widget', (req, res) => {
             color: #2196F3;
             font-weight: bold;
         }
-        /* Formulário de Leads */
-.lead-form-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 10000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-}
-
-.lead-form-container {
-    background: white;
-    border-radius: 20px;
-    padding: 30px;
-    max-width: 450px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: formSlideIn 0.3s ease;
-}
-
-@keyframes formSlideIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-.lead-form-header {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.lead-form-header h3 {
-    color: #2196F3;
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-.lead-form-header p {
-    color: #666;
-    font-size: 16px;
-}
-
-.lead-form-group {
-    margin-bottom: 20px;
-}
-
-.lead-form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: #333;
-}
-
-.lead-form-group input,
-.lead-form-group select,
-.lead-form-group textarea {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e9ecef;
-    border-radius: 10px;
-    font-size: 14px;
-    transition: border-color 0.3s;
-}
-
-.lead-form-group input:focus,
-.lead-form-group select:focus,
-.lead-form-group textarea:focus {
-    outline: none;
-    border-color: #2196F3;
-}
-
-.lead-form-group textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.lead-form-buttons {
-    display: flex;
-    gap: 15px;
-    margin-top: 25px;
-}
-
-.lead-form-button {
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.lead-form-button.primary {
-    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-    color: white;
-}
-
-.lead-form-button.primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
-}
-
-.lead-form-button.secondary {
-    background: #f8f9fa;
-    color: #666;
-    border: 2px solid #e9ecef;
-}
-
-.lead-form-button.secondary:hover {
-    background: #e9ecef;
-}
-
-.lead-form-loading {
-    display: none;
-    text-align: center;
-    padding: 20px;
-}
-
-.lead-form-success {
-    display: none;
-    text-align: center;
-    padding: 30px;
-}
-
-.lead-form-success h4 {
-    color: #28a745;
-    margin-bottom: 15px;
-}
-
-@media (max-width: 480px) {
-    .lead-form-container {
-        padding: 20px;
-        margin: 10px;
-    }
-    
-    .lead-form-buttons {
-        flex-direction: column;
-    }
-}
     </style>
 </head>
 <body>
@@ -1547,83 +1396,6 @@ app.get('/widget', (req, res) => {
         </button>
     </div>
 
-    <!-- Formulário de Leads -->
-<div class="lead-form-overlay" id="leadFormOverlay">
-    <div class="lead-form-container">
-        <div class="lead-form-header">
-            <h3>🎯 Vamos conversar!</h3>
-            <p>Preencha seus dados e nossa equipe entrará em contato em breve</p>
-        </div>
-        
-        <form id="leadForm">
-            <div class="lead-form-group">
-                <label for="leadNome">Nome Completo *</label>
-                <input type="text" id="leadNome" name="nome" required>
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadEmail">Email Corporativo *</label>
-                <input type="email" id="leadEmail" name="email" required>
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadTelefone">Telefone/WhatsApp *</label>
-                <input type="tel" id="leadTelefone" name="telefone" required placeholder="(11) 99999-9999">
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadEmpresa">Empresa</label>
-                <input type="text" id="leadEmpresa" name="empresa" placeholder="Nome da sua empresa">
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadCNPJ">CNPJ</label>
-                <input type="text" id="leadCNPJ" name="cnpj" placeholder="00.000.000/0001-00">
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadInteresse">Principal Interesse *</label>
-                <select id="leadInteresse" name="interesse" required>
-                    <option value="">Selecione uma opção</option>
-                    <option value="OC TEL - Soluções em Telecom">OC TEL - Soluções em Telecom</option>
-                    <option value="OC DIGITAL - Marketing Digital">OC DIGITAL - Marketing Digital</option>
-                    <option value="OC SAÚDE - Planos Empresariais">OC SAÚDE - Planos Empresariais</option>
-                    <option value="Consultoria Empresarial Geral">Consultoria Empresarial Geral</option>
-                    <option value="Múltiplas Soluções">Múltiplas Soluções</option>
-                    <option value="Outros">Outros</option>
-                </select>
-            </div>
-            
-            <div class="lead-form-group">
-                <label for="leadMensagem">Mensagem Adicional</label>
-                <textarea id="leadMensagem" name="mensagem" placeholder="Conte-nos mais sobre sua necessidade..."></textarea>
-            </div>
-            
-            <div class="lead-form-buttons">
-                <button type="button" class="lead-form-button secondary" onclick="closeLeadForm()">
-                    Cancelar
-                </button>
-                <button type="submit" class="lead-form-button primary">
-                    Enviar Solicitação
-                </button>
-            </div>
-        </form>
-        
-        <div class="lead-form-loading" id="leadFormLoading">
-            <h4>📤 Enviando solicitação...</h4>
-            <p>Aguarde um momento...</p>
-        </div>
-        
-        <div class="lead-form-success" id="leadFormSuccess">
-            <h4>✅ Solicitação enviada com sucesso!</h4>
-            <p>Nossa equipe entrará em contato em breve. Obrigado pelo interesse!</p>
-            <button class="lead-form-button primary" onclick="closeLeadForm()" style="margin-top: 15px;">
-                Fechar
-            </button>
-        </div>
-    </div>
-</div>
-
     <script>
     // ===== VARIÁVEIS GLOBAIS =====
     const chatContainer = document.getElementById('chatContainer');
@@ -1633,7 +1405,10 @@ app.get('/widget', (req, res) => {
     const typing = document.getElementById('typing');
     
     let chatOpen = false;
-    let leadFormOpen = false;
+    
+    // ===== GERAR SESSÃO ÚNICA UMA VEZ SÓ =====
+    const sessionId = 'widget-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    console.log('🎯 Sessão criada:', sessionId);
 
     // ===== FUNÇÕES DO CHAT =====
     function toggleChat() {
@@ -1679,95 +1454,7 @@ app.get('/widget', (req, res) => {
         typing.style.display = 'none';
     }
 
-    // ===== FUNÇÃO DE ABERTURA GARANTIDA =====
-    function openLeadForm() {
-        console.log('🎯 === INICIANDO ABERTURA DO FORMULÁRIO ===');
-        
-        // Marcar como aberto ANTES de tudo
-        leadFormOpen = true;
-        
-        // Buscar elemento
-        const overlay = document.getElementById('leadFormOverlay');
-        console.log('🔍 Elemento overlay encontrado:', !!overlay);
-        
-        if (!overlay) {
-            console.error('❌ ERRO: leadFormOverlay não encontrado!');
-            alert('ERRO: Formulário não encontrado no DOM');
-            return;
-        }
-        
-        // FORÇAR TODOS OS ESTILOS NECESSÁRIOS
-        console.log('🔧 Aplicando estilos forçados...');
-        overlay.style.display = 'flex';
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100vw';
-        overlay.style.height = '100vh';
-        overlay.style.zIndex = '999999';
-        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.visibility = 'visible';
-        overlay.style.opacity = '1';
-        
-        // Verificar se container interno existe
-        const container = overlay.querySelector('.lead-form-container');
-        if (container) {
-            console.log('🔧 Aplicando estilos no container...');
-            container.style.display = 'block';
-            container.style.visibility = 'visible';
-            container.style.opacity = '1';
-            container.style.transform = 'scale(1)';
-            container.style.zIndex = '1000000';
-        }
-        
-        console.log('✅ FORMULÁRIO DEVE ESTAR VISÍVEL AGORA!');
-        
-        // Focar no primeiro campo após um delay
-        setTimeout(() => {
-            const nomeField = document.getElementById('leadNome');
-            if (nomeField) {
-                nomeField.focus();
-                console.log('🎯 Foco aplicado no campo nome');
-            }
-        }, 500);
-        
-        // VERIFICAÇÃO FINAL
-        setTimeout(() => {
-            const computedStyle = window.getComputedStyle(overlay);
-            console.log('�� Verificação final:');
-            console.log('• display:', computedStyle.display);
-            console.log('• visibility:', computedStyle.visibility);
-            console.log('• opacity:', computedStyle.opacity);
-            console.log('• z-index:', computedStyle.zIndex);
-        }, 1000);
-    }
-
-    function closeLeadForm() {
-        console.log('🔒 Fechando formulário...');
-        leadFormOpen = false;
-        
-        const overlay = document.getElementById('leadFormOverlay');
-        if (overlay) {
-            overlay.style.display = 'none';
-        }
-        
-        // Reset form
-        const form = document.getElementById('leadForm');
-        if (form) {
-            form.reset();
-            form.style.display = 'block';
-        }
-        
-        const loading = document.getElementById('leadFormLoading');
-        if (loading) loading.style.display = 'none';
-        
-        const success = document.getElementById('leadFormSuccess');
-        if (success) success.style.display = 'none';
-    }
-
-    // ===== FUNÇÃO DE ENVIO DE MENSAGEM - MELHORADA =====
+    // ===== FUNÇÃO DE ENVIO DE MENSAGEM - SESSÃO FIXA =====
     async function sendMessage() {
         const message = messageInput.value.trim();
         if (!message) return;
@@ -1778,6 +1465,7 @@ app.get('/widget', (req, res) => {
 
         try {
             console.log('📤 Enviando mensagem:', message);
+            console.log('📤 SessionId:', sessionId);
             
             const response = await fetch('/api/chat', {
                 method: 'POST',
@@ -1786,7 +1474,7 @@ app.get('/widget', (req, res) => {
                 },
                 body: JSON.stringify({ 
                     message: message,
-                    sessionId: 'widget-' + Date.now() // Sessão única
+                    sessionId: sessionId // ← SEMPRE A MESMA SESSÃO
                 })
             });
 
@@ -1795,50 +1483,11 @@ app.get('/widget', (req, res) => {
             
             console.log('📊 === RESPOSTA COMPLETA ===');
             console.log('• success:', data.success);
-            console.log('• openForm:', data.openForm);
-            console.log('• openForm tipo:', typeof data.openForm);
             console.log('• reply length:', data.reply?.length);
             console.log('• debug:', data.debug);
             
             if (data.success) {
                 addMessage(data.reply);
-                
-                // ===== VERIFICAÇÃO SUPER DETALHADA =====
-                console.log('�� === VERIFICANDO ABERTURA DO FORMULÁRIO ===');
-                console.log('• data.openForm:', data.openForm);
-                console.log('• data.openForm === true:', data.openForm === true);
-                console.log('• leadFormOpen atual:', leadFormOpen);
-                console.log('• !leadFormOpen:', !leadFormOpen);
-                
-                // CONDIÇÕES MÚLTIPLAS PARA GARANTIR
-                const deveAbrir = data.openForm === true || 
-                                data.openForm === 'true' || 
-                                data.openForm == true ||
-                                (data.debug && data.debug.interesseDetectado === true);
-                
-                console.log('• deveAbrir (calculado):', deveAbrir);
-                console.log('• Condição final:', deveAbrir && !leadFormOpen);
-                
-                if (deveAbrir && !leadFormOpen) {
-                    console.log('�� === ABRINDO FORMULÁRIO ===');
-                    console.log('• Aguardando 500ms...');
-                    
-                    setTimeout(() => {
-                        console.log('⏰ Timeout executado, chamando openLeadForm()');
-                        openLeadForm();
-                    }, 500);
-                    
-                } else {
-                    console.log('❌ === NÃO VAI ABRIR FORMULÁRIO ===');
-                    if (!deveAbrir) {
-                        console.log('  → Motivo: deveAbrir é false');
-                        console.log('  → data.openForm:', data.openForm);
-                        console.log('  → interesseDetectado:', data.debug?.interesseDetectado);
-                    }
-                    if (leadFormOpen) {
-                        console.log('  → Motivo: leadFormOpen já é true');
-                    }
-                }
             } else {
                 console.error('❌ Erro na resposta:', data.error);
                 addMessage('Desculpe, ocorreu um erro. Tente novamente.');
@@ -1857,142 +1506,11 @@ app.get('/widget', (req, res) => {
         }
     });
 
-    // ===== CONFIGURAÇÃO DO FORMULÁRIO =====
-    function setupFormListeners() {
-        console.log('⚙️ Configurando listeners do formulário...');
-        
-        // Fechar clicando fora
-        const overlay = document.getElementById('leadFormOverlay');
-        if (overlay) {
-            overlay.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    closeLeadForm();
-                }
-            });
-        }
-
-        // Submissão do formulário
-        const form = document.getElementById('leadForm');
-        if (form) {
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                console.log('📤 Enviando formulário...');
-                
-                const formData = new FormData(this);
-                const leadData = {
-                    nome: formData.get('nome'),
-                    email: formData.get('email'),
-                    telefone: formData.get('telefone'),
-                    empresa: formData.get('empresa'),
-                    cnpj: formData.get('cnpj'),
-                    interesse: formData.get('interesse'),
-                    mensagem: formData.get('mensagem'),
-                    origem: 'Chat Widget - Grupo OC',
-                    timestamp: new Date().toISOString()
-                };
-                
-                // Mostrar loading
-                document.getElementById('leadForm').style.display = 'none';
-                document.getElementById('leadFormLoading').style.display = 'block';
-                
-                try {
-                    const response = await fetch('/api/capture-lead', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(leadData)
-                    });
-                    
-                    const result = await response.json();
-                    console.log('�� Resultado envio lead:', result);
-                    
-                    if (result.success) {
-                        document.getElementById('leadFormLoading').style.display = 'none';
-                        document.getElementById('leadFormSuccess').style.display = 'block';
-                        
-                        setTimeout(() => {
-                            closeLeadForm();
-                        }, 5000);
-                    } else {
-                        throw new Error(result.error || 'Erro ao enviar solicitação');
-                    }
-                    
-                } catch (error) {
-                    console.error('❌ Erro ao enviar lead:', error);
-                    alert('Erro ao enviar solicitação. Tente novamente.');
-                    
-                    document.getElementById('leadFormLoading').style.display = 'none';
-                    document.getElementById('leadForm').style.display = 'block';
-                }
-            });
-        }
-
-        // Máscaras
-        const telefoneField = document.getElementById('leadTelefone');
-        if (telefoneField) {
-            telefoneField.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length <= 11) {
-                    value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-                    if (value.length < 14) {
-                        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-                    }
-                }
-                e.target.value = value;
-            });
-        }
-
-        const cnpjField = document.getElementById('leadCNPJ');
-        if (cnpjField) {
-            cnpjField.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                e.target.value = value;
-            });
-        }
-        
-        console.log('✅ Listeners do formulário configurados!');
-    }
-
     // ===== INICIALIZAÇÃO =====
     window.addEventListener('load', function() {
         console.log('🚀 === WIDGET CARREGADO ===');
-        
-        // Verificar elementos
-        const overlay = document.getElementById('leadFormOverlay');
-        const form = document.getElementById('leadForm');
-        
-        console.log('🔍 Verificação de elementos:');
-        console.log('• leadFormOverlay:', !!overlay);
-        console.log('• leadForm:', !!form);
-        
-        if (overlay && form) {
-            console.log('✅ Todos os elementos encontrados!');
-            setupFormListeners();
-        } else {
-            console.error('❌ Elementos do formulário não encontrados!');
-        }
+        console.log('🎯 Sessão ativa:', sessionId);
     });
-
-    // ===== FUNÇÕES GLOBAIS PARA TESTE =====
-    window.testarFormulario = function() {
-        console.log('🧪 === TESTE MANUAL ===');
-        openLeadForm();
-    };
-    
-    window.debugFormulario = function() {
-        console.log('🔍 === DEBUG FORMULÁRIO ===');
-        const overlay = document.getElementById('leadFormOverlay');
-        console.log('• Elemento existe:', !!overlay);
-        if (overlay) {
-            const style = window.getComputedStyle(overlay);
-            console.log('• display:', style.display);
-            console.log('• visibility:', style.visibility);
-            console.log('• opacity:', style.opacity);
-            console.log('• z-index:', style.zIndex);
-        }
-    };
 </script>
 </body>
 </html>`);
@@ -2347,7 +1865,7 @@ app.get('/', (req, res) => {
         <div class="chat-container" id="chatContainer">
             <div class="chat-header">
                 <div class="chat-header-info">
-                    <h3>🏢 Grupo OC</h3>
+                    <h3>🏢 O Consultor</h3>
                     <p>Assistente Online <span class="online-status"></span></p>
                 </div>
                 <button class="chat-close" onclick="toggleChat()">×</button>
@@ -2485,6 +2003,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
