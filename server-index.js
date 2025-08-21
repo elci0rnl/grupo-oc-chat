@@ -354,59 +354,55 @@ function gerarRespostaDespedida(tipo) {
 }
 
 // Função melhorada para detectar interesse - MAIS PRECISA
+// Função melhorada para detectar interesse - PARA COLETA CONVERSACIONAL
 function detectarInteresseComercial(mensagemUsuario, respostaIA) {
     console.log('🔍 Analisando interesse comercial...');
     
     const mensagemLimpa = mensagemUsuario.toLowerCase().trim();
     console.log('• Mensagem do usuário:', mensagemLimpa);
     
-    // Palavras de ALTO interesse (sempre abre formulário)
-    const palavrasAltoInteresse = [
+    // Frases que indicam interesse claro
+    const frasesInteresse = [
+        'tenho interesse', 'estou interessado', 'me interessei',
         'quero contratar', 'preciso contratar', 'gostaria de contratar',
         'quero um orçamento', 'preciso de orçamento', 'solicitar orçamento',
         'quero uma proposta', 'preciso de proposta', 'solicitar proposta',
-        'tenho interesse', 'estou interessado', 'me interessei',
-        'quero saber mais', 'preciso saber mais', 'gostaria de saber mais'
+        'quero saber mais', 'preciso saber mais', 'gostaria de saber mais',
+        'como contratar', 'como solicitar', 'como funciona',
+        'quanto custa', 'qual o valor', 'qual o preço',
+        'quero falar com', 'preciso falar com', 'quero conversar',
+        'tenho uma empresa', 'sou empresário', 'trabalho em',
+        'minha empresa precisa', 'nossa empresa precisa',
+        'preciso de ajuda', 'preciso de', 'gostaria de'
     ];
     
-    const temAltoInteresse = palavrasAltoInteresse.some(frase => 
+    const temInteresse = frasesInteresse.some(frase => 
         mensagemLimpa.includes(frase)
     );
     
-    console.log('• Alto interesse detectado:', temAltoInteresse);
+    // Palavras individuais de interesse
+    const palavrasInteresse = [
+        'contratar', 'orçamento', 'proposta', 'cotação', 
+        'valor', 'preço', 'custo', 'investimento',
+        'telefonia', 'marketing', 'saúde', 'plano',
+        'consultoria', 'auditoria', 'seo', 'google'
+    ];
     
-    if (temAltoInteresse) {
-        console.log('🎯 ALTO INTERESSE - Abrir formulário: true');
-        return true;
-    }
+    const temPalavraInteresse = palavrasInteresse.some(palavra => 
+        mensagemLimpa.includes(palavra)
+    );
     
-    // Verificar palavras individuais (interesse médio)
-    const palavrasEncontradas = [];
-    const temPalavraChave = ['contratar', 'orçamento', 'proposta', 'cotação', 'valor', 'preço'].some(palavra => {
-        const encontrou = mensagemLimpa.includes(palavra);
-        if (encontrou) {
-            palavrasEncontradas.push(palavra);
-        }
-        return encontrou;
-    });
-    
-    console.log('• Palavras-chave encontradas:', palavrasEncontradas);
-    
-    // EVITAR falsos positivos em saudações
+    // EVITAR saudações simples
     const ehSaudacao = mensagemLimpa.length < 25 && (
         mensagemLimpa.includes('olá') ||
         mensagemLimpa.includes('oi') ||
         mensagemLimpa.includes('bom dia') ||
         mensagemLimpa.includes('boa tarde') ||
-        mensagemLimpa.includes('boa noite') ||
-        mensagemLimpa.includes('tudo bem')
+        mensagemLimpa.includes('boa noite')
     );
     
-    console.log('• É saudação simples:', ehSaudacao);
-    
-    // Só abrir formulário se NÃO for saudação E tiver interesse
-    const resultado = !ehSaudacao && temPalavraChave;
-    console.log('• RESULTADO FINAL - Abrir formulário:', resultado);
+    const resultado = !ehSaudacao && (temInteresse || temPalavraInteresse);
+    console.log('• RESULTADO - Iniciar coleta:', resultado);
     
     return resultado;
 }
@@ -805,125 +801,176 @@ app.post('/api/capture-lead', async (req, res) => {
     }
 });
 
-// Rota do chat - COM DESPEDIDA + DETECÇÃO DE LEADS
-// Rota do chat - CORRIGIDA PARA RESOLVER "resultado não definido"
-// Rota do chat - CORREÇÃO DEFINITIVA FINAL
+// ===== SISTEMA DE COLETA CONVERSACIONAL =====
+const sessoesLead = new Map(); // Armazenar estado das sessões
+
+// Estados da coleta de lead
+const ESTADOS_LEAD = {
+    NORMAL: 'normal',
+    COLETANDO_NOME: 'coletando_nome',
+    COLETANDO_TELEFONE: 'coletando_telefone',
+    COLETANDO_EMAIL: 'coletando_email',
+    COLETANDO_INTERESSE: 'coletando_interesse',
+    FINALIZADO: 'finalizado'
+};
+
+// Função para iniciar coleta de lead
+function iniciarColetaLead(sessionId) {
+    sessoesLead.set(sessionId, {
+        estado: ESTADOS_LEAD.COLETANDO_NOME,
+        dados: {},
+        iniciadoEm: new Date().toISOString()
+    });
+    console.log('🎯 Iniciando coleta de lead para sessão:', sessionId);
+}
+
+// Função para processar coleta de lead
+function processarColetaLead(sessionId, mensagem) {
+    const sessao = sessoesLead.get(sessionId);
+    if (!sessao) return null;
+    
+    console.log('📝 Processando coleta - Estado:', sessao.estado, 'Mensagem:', mensagem);
+    
+    switch (sessao.estado) {
+        case ESTADOS_LEAD.COLETANDO_NOME:
+            sessao.dados.nome = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_TELEFONE;
+            return {
+                resposta: `Ótimo, **${sessao.dados.nome}**! 📱\n\nAgora me informe seu **telefone ou WhatsApp** para contato:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_TELEFONE:
+            sessao.dados.telefone = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_EMAIL;
+            return {
+                resposta: `Perfeito! 📧\n\nAgora preciso do seu **email** para enviarmos informações detalhadas:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_EMAIL:
+            sessao.dados.email = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_INTERESSE;
+            return {
+                resposta: `Excelente! 🎯\n\nPor último, me conte **qual serviço tem mais interesse**:\n\n🔹 **OC TEL** - Telefonia, Internet, Dados Móveis\n🔹 **OC DIGITAL** - SEO, Google Ads, Marketing Digital\n🔹 **OC SAÚDE** - Planos de Saúde Empresariais\n🔹 **Consultoria Geral** - Múltiplas soluções\n\nOu descreva sua necessidade específica:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_INTERESSE:
+            sessao.dados.interesse = mensagem.trim();
+            sessao.dados.origem = 'Chat Conversacional - Grupo OC';
+            sessao.dados.timestamp = new Date().toISOString();
+            sessao.estado = ESTADOS_LEAD.FINALIZADO;
+            
+            // Enviar lead por email
+            console.log('📧 Enviando lead coletado:', sessao.dados);
+            enviarEmailLead(sessao.dados).then(resultado => {
+                console.log('📧 Resultado envio email:', resultado);
+            });
+            
+            // Limpar sessão após 5 minutos
+            setTimeout(() => {
+                sessoesLead.delete(sessionId);
+                console.log('🧹 Sessão de lead limpa:', sessionId);
+            }, 5 * 60 * 1000);
+            
+            return {
+                resposta: `🎉 **Perfeito, ${sessao.dados.nome}!**\n\nSeus dados foram registrados com sucesso:\n\n✅ **Nome:** ${sessao.dados.nome}\n✅ **Telefone:** ${sessao.dados.telefone}\n✅ **Email:** ${sessao.dados.email}\n✅ **Interesse:** ${sessao.dados.interesse}\n\n📞 **Nossa equipe entrará em contato em breve!**\n\n💬 Posso ajudar em mais alguma coisa sobre o Grupo OC?`,
+                continuarColeta: false,
+                leadFinalizado: true
+            };
+            
+        default:
+            return null;
+    }
+}
+
+// Rota do chat - COM COLETA CONVERSACIONAL
 app.post('/api/chat', async (req, res) => {
     try {
-        const { message, sessionId } = req.body;
+        const { message, sessionId = 'default-' + Date.now() } = req.body;
+        
+        console.log('💬 Nova mensagem:', message, 'Sessão:', sessionId);
         
         // ===== GARANTIR QUE DADOS ESTÃO CARREGADOS =====
         if (!dadosEmpresa) {
             console.log('📊 Carregando dados da empresa...');
             dadosEmpresa = await coletarDadosGrupoOC();
-            console.log('📊 Dados carregados:', !!dadosEmpresa);
-            console.log('📊 Serviços total:', dadosEmpresa?.metadados?.servicosTotal || 0);
+            if (dadosEmpresa) {
+                ia.carregarDadosEmpresa(dadosEmpresa);
+            }
         }
         
-        // SEMPRE recarregar dados na IA
-        if (dadosEmpresa) {
-            ia.carregarDadosEmpresa(dadosEmpresa);
-            console.log('🤖 Dados recarregados na IA');
+        // ===== VERIFICAR SE ESTÁ EM PROCESSO DE COLETA =====
+        const sessaoLead = sessoesLead.get(sessionId);
+        if (sessaoLead && sessaoLead.estado !== ESTADOS_LEAD.FINALIZADO) {
+            console.log('📝 Processando coleta de lead...');
+            const resultado = processarColetaLead(sessionId, message);
+            
+            if (resultado) {
+                return res.json({
+                    success: true,
+                    reply: resultado.resposta,
+                    openForm: false, // NUNCA abrir formulário popup
+                    debug: {
+                        tipoMensagem: 'coleta_lead',
+                        estadoColeta: sessaoLead.estado,
+                        dadosColetados: Object.keys(sessaoLead.dados),
+                        leadFinalizado: resultado.leadFinalizado || false,
+                        sessionId: sessionId
+                    }
+                });
+            }
         }
         
-        // ===== VERIFICAR TIPO DE MENSAGEM PRIMEIRO =====
+        // ===== VERIFICAR TIPO DE MENSAGEM =====
         const tipoMensagem = detectarTipoMensagem(message);
         console.log('📝 Tipo de mensagem detectado:', tipoMensagem);
         
         let resposta;
-        let deveAbrirFormulario = false;
         let fonteResposta = 'despedida';
-        let resultado = null;
         
         // Se for despedida, usar resposta pré-definida
         if (tipoMensagem !== 'normal') {
             resposta = gerarRespostaDespedida(tipoMensagem);
             console.log('💬 Usando resposta de despedida:', resposta);
             fonteResposta = 'despedida';
-            deveAbrirFormulario = false; // NUNCA abrir formulário em despedidas
         } else {
-            // ===== DETECÇÃO DE LEADS PRIMEIRO =====
-            console.log('🔍 Verificando interesse comercial ANTES da IA...');
+            // ===== VERIFICAR INTERESSE COMERCIAL =====
             const interesseDetectado = detectarInteresseComercial(message, '');
-            console.log('• Interesse detectado:', interesseDetectado);
+            console.log('🔍 Interesse detectado:', interesseDetectado);
             
             if (interesseDetectado) {
-                // Se detectou interesse, dar resposta específica e abrir formulário
-                resposta = `🎯 **Ótimo! Vejo que você tem interesse em nossos serviços!**
-
-O **Grupo OC** oferece soluções empresariais através de 3 divisões especializadas:
-
-🔹 **OC TEL** - Soluções em Telecom
-• Telefonia fixa e móvel
-• Internet fibra e dados móveis
-• Auditoria de faturas
-
-🔹 **OC DIGITAL** - Marketing Digital
-• SEO e otimização web
-• Google Ads e campanhas
-• Estratégias personalizadas
-
-🔹 **OC SAÚDE** - Planos Empresariais
-• Planos de saúde a partir de 2 vidas
-• Consultoria em saúde corporativa
-• Otimização de custos
-
-�� **Vou abrir um formulário para você preencher seus dados e nossa equipe entrará em contato em breve!**`;
-                
-                deveAbrirFormulario = true;
-                fonteResposta = 'interesse-detectado';
-                console.log('🎯 Resposta de interesse + formulário será aberto');
+                // Iniciar coleta conversacional
+                iniciarColetaLead(sessionId);
+                resposta = `🎯 **Que ótimo! Vejo que você tem interesse em nossos serviços!**\n\nO **Grupo OC** oferece soluções empresariais através de 3 divisões especializadas:\n\n🔹 **OC TEL** - Soluções em Telecom (Telefonia, Internet, Dados Móveis)\n🔹 **OC DIGITAL** - Marketing Digital (SEO, Google Ads, Estratégias)\n🔹 **OC SAÚDE** - Planos Empresariais (Convênios a partir de 2 vidas)\n\n📝 **Vou coletar alguns dados para nossa equipe entrar em contato:**\n\n👤 **Primeiro, me informe seu nome completo:**`;
+                fonteResposta = 'inicio_coleta_lead';
             } else {
                 // Usar IA para resposta normal
                 try {
-                    resultado = await ia.gerarResposta(message, sessionId);
+                    const resultado = await ia.gerarResposta(message, sessionId);
                     resposta = resultado.resposta;
                     fonteResposta = resultado.fonte;
-                    console.log('🤖 Resposta da IA gerada');
                 } catch (error) {
                     console.error('❌ Erro ao gerar resposta da IA:', error.message);
-                    resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.
-
-Oferecemos soluções empresariais através de 3 divisões:
-• **OC TEL** - Soluções em Telecom
-• **OC DIGITAL** - Marketing Digital  
-• **OC SAÚDE** - Planos Empresariais
-
-Como posso ajudar você hoje?`;
+                    resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.\n\nOferecemos soluções empresariais através de 3 divisões:\n• **OC TEL** - Soluções em Telecom\n• **OC DIGITAL** - Marketing Digital\n• **OC SAÚDE** - Planos Empresariais\n\nComo posso ajudar você hoje?`;
                     fonteResposta = 'fallback';
                 }
             }
         }
         
-        // Garantir que sempre temos uma resposta
-        if (!resposta) {
-            resposta = "Olá! �� Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
-            fonteResposta = 'fallback-final';
-        }
-        
-        console.log('📤 Enviando resposta:', {
-            tipo: tipoMensagem,
-            fonte: fonteResposta,
-            abrirFormulario: deveAbrirFormulario,
-            tamanhoResposta: resposta.length
-        });
-        
         res.json({
             success: true,
             reply: resposta,
-            openForm: deveAbrirFormulario,
+            openForm: false, // NUNCA abrir formulário popup
             debug: {
                 tipoMensagem: tipoMensagem,
                 fonteResposta: fonteResposta,
-                fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao',
+                sessionId: sessionId,
+                temSessaoLead: !!sessaoLead,
+                estadoLead: sessaoLead?.estado || 'nenhum',
                 servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0,
-                divisoes: dadosEmpresa?.metadados?.divisoes || [],
-                interesseDetectado: deveAbrirFormulario,
-                mensagemOriginal: message,
-                palavrasDetectadas: tipoMensagem === 'normal' ? 
-                    palavrasChaveInteresse.filter(palavra => 
-                        message.toLowerCase().includes(palavra.toLowerCase())
-                    ) : []
+                interesseDetectado: interesseDetectado || false
             }
         });
         
@@ -2342,6 +2389,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
