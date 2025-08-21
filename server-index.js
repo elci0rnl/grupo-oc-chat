@@ -885,7 +885,114 @@ function processarColetaLead(sessionId, mensagem) {
     }
 }
 
-// Rota do chat - COM COLETA CONVERSACIONAL
+// ===== SISTEMA DE COLETA CONVERSACIONAL =====
+const sessoesLead = new Map(); // Armazenar estado das sessões
+
+// Estados da coleta de lead
+const ESTADOS_LEAD = {
+    NORMAL: 'normal',
+    COLETANDO_NOME: 'coletando_nome',
+    COLETANDO_TELEFONE: 'coletando_telefone',
+    COLETANDO_EMAIL: 'coletando_email',
+    COLETANDO_INTERESSE: 'coletando_interesse',
+    FINALIZADO: 'finalizado'
+};
+
+// Função para iniciar coleta de lead
+function iniciarColetaLead(sessionId) {
+    sessoesLead.set(sessionId, {
+        estado: ESTADOS_LEAD.COLETANDO_NOME,
+        dados: {},
+        iniciadoEm: new Date().toISOString()
+    });
+    console.log('🎯 Iniciando coleta de lead para sessão:', sessionId);
+}
+
+// Função para processar coleta de lead
+function processarColetaLead(sessionId, mensagem) {
+    const sessao = sessoesLead.get(sessionId);
+    if (!sessao) return null;
+    
+    console.log('📝 Processando coleta - Estado:', sessao.estado, 'Mensagem:', mensagem);
+    
+    switch (sessao.estado) {
+        case ESTADOS_LEAD.COLETANDO_NOME:
+            sessao.dados.nome = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_TELEFONE;
+            return {
+                resposta: `Ótimo, **${sessao.dados.nome}**! 📱
+
+Agora me informe seu **telefone ou WhatsApp** para contato:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_TELEFONE:
+            sessao.dados.telefone = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_EMAIL;
+            return {
+                resposta: `Perfeito! 📧
+
+Agora preciso do seu **email** para enviarmos informações detalhadas:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_EMAIL:
+            sessao.dados.email = mensagem.trim();
+            sessao.estado = ESTADOS_LEAD.COLETANDO_INTERESSE;
+            return {
+                resposta: `Excelente! 🎯
+
+Por último, me conte **qual serviço tem mais interesse**:
+
+🔹 **OC TEL** - Telefonia, Internet, Dados Móveis
+🔹 **OC DIGITAL** - SEO, Google Ads, Marketing Digital
+🔹 **OC SAÚDE** - Planos de Saúde Empresariais
+🔹 **Consultoria Geral** - Múltiplas soluções
+
+Ou descreva sua necessidade específica:`,
+                continuarColeta: true
+            };
+            
+        case ESTADOS_LEAD.COLETANDO_INTERESSE:
+            sessao.dados.interesse = mensagem.trim();
+            sessao.dados.origem = 'Chat Conversacional - Grupo OC';
+            sessao.dados.timestamp = new Date().toISOString();
+            sessao.estado = ESTADOS_LEAD.FINALIZADO;
+            
+            // Enviar lead por email
+            console.log('📧 Enviando lead coletado:', sessao.dados);
+            enviarEmailLead(sessao.dados).then(resultado => {
+                console.log('📧 Resultado envio email:', resultado);
+            });
+            
+            // Limpar sessão após 5 minutos
+            setTimeout(() => {
+                sessoesLead.delete(sessionId);
+                console.log('🧹 Sessão de lead limpa:', sessionId);
+            }, 5 * 60 * 1000);
+            
+            return {
+                resposta: `🎉 **Perfeito, ${sessao.dados.nome}!**
+
+Seus dados foram registrados com sucesso:
+
+✅ **Nome:** ${sessao.dados.nome}
+✅ **Telefone:** ${sessao.dados.telefone}
+✅ **Email:** ${sessao.dados.email}
+✅ **Interesse:** ${sessao.dados.interesse}
+
+📞 **Nossa equipe entrará em contato em breve!**
+
+💬 Posso ajudar em mais alguma coisa sobre o Grupo OC?`,
+                continuarColeta: false,
+                leadFinalizado: true
+            };
+            
+        default:
+            return null;
+    }
+}
+// Rota do chat - CORREÇÃO DEFINITIVA COM SISTEMA CONVERSACIONAL
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId = 'default-' + Date.now() } = req.body;
@@ -911,7 +1018,7 @@ app.post('/api/chat', async (req, res) => {
                 return res.json({
                     success: true,
                     reply: resultado.resposta,
-                    openForm: false, // NUNCA abrir formulário popup
+                    openForm: false,
                     debug: {
                         tipoMensagem: 'coleta_lead',
                         estadoColeta: sessaoLead.estado,
@@ -943,21 +1050,96 @@ app.post('/api/chat', async (req, res) => {
             if (interesseDetectado) {
                 // Iniciar coleta conversacional
                 iniciarColetaLead(sessionId);
-                resposta = `🎯 **Que ótimo! Vejo que você tem interesse em nossos serviços!**\n\nO **Grupo OC** oferece soluções empresariais através de 3 divisões especializadas:\n\n🔹 **OC TEL** - Soluções em Telecom (Telefonia, Internet, Dados Móveis)\n🔹 **OC DIGITAL** - Marketing Digital (SEO, Google Ads, Estratégias)\n🔹 **OC SAÚDE** - Planos Empresariais (Convênios a partir de 2 vidas)\n\n📝 **Vou coletar alguns dados para nossa equipe entrar em contato:**\n\n👤 **Primeiro, me informe seu nome completo:**`;
+                resposta = `🎯 **Que ótimo! Vejo que você tem interesse em nossos serviços!**
+
+O **Grupo OC** oferece soluções empresariais através de 3 divisões especializadas:
+
+🔹 **OC TEL** - Soluções em Telecom (Telefonia, Internet, Dados Móveis)
+🔹 **OC DIGITAL** - Marketing Digital (SEO, Google Ads, Estratégias)
+🔹 **OC SAÚDE** - Planos Empresariais (Convênios a partir de 2 vidas)
+
+📝 **Vou coletar alguns dados para nossa equipe entrar em contato:**
+
+👤 **Primeiro, me informe seu nome completo:**`;
                 fonteResposta = 'inicio_coleta_lead';
             } else {
-                // Usar IA para resposta normal
+                // ===== TENTAR IA PRINCIPAL PRIMEIRO =====
                 try {
+                    console.log('🤖 Tentando IA principal...');
                     const resultado = await ia.gerarResposta(message, sessionId);
                     resposta = resultado.resposta;
                     fonteResposta = resultado.fonte;
+                    console.log('✅ IA principal funcionou');
                 } catch (error) {
-                    console.error('❌ Erro ao gerar resposta da IA:', error.message);
-                    resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.\n\nOferecemos soluções empresariais através de 3 divisões:\n• **OC TEL** - Soluções em Telecom\n• **OC DIGITAL** - Marketing Digital\n• **OC SAÚDE** - Planos Empresariais\n\nComo posso ajudar você hoje?`;
-                    fonteResposta = 'fallback';
+                    console.log('⚠️ IA principal falhou:', error.message);
+                    
+                    // ===== FALLBACK GARANTIDO =====
+                    console.log('🤖 Usando fallback garantido...');
+                    
+                    if (message.toLowerCase().includes('serviços') || message.toLowerCase().includes('servicos')) {
+                        resposta = `🏢 **Grupo OC - Soluções Empresariais**
+
+Oferecemos soluções através de 3 divisões especializadas:
+
+🔹 **OC TEL** - Soluções em Telecom
+• Telefonia fixa e móvel
+• Internet fibra e dados móveis
+• Auditoria de faturas
+
+🔹 **OC DIGITAL** - Marketing Digital
+• SEO e otimização web
+• Google Ads e campanhas
+• Estratégias personalizadas
+
+🔹 **OC SAÚDE** - Planos Empresariais
+• Planos de saúde a partir de 2 vidas
+• Consultoria em saúde corporativa
+• Otimização de custos
+
+�� **Como posso ajudar você hoje?**`;
+                    } else if (message.toLowerCase().includes('contato')) {
+                        resposta = `📞 **Entre em Contato com o Grupo OC**
+
+🌐 **Site:** https://grupooc.com.br/
+📧 **Email:** contato@grupooc.com.br
+📱 **WhatsApp:** Entre em contato através do nosso site
+
+🏢 **Nossas Divisões:**
+• **OC TEL** - Soluções em Telecom
+• **OC DIGITAL** - Marketing Digital
+• **OC SAÚDE** - Planos Empresariais
+
+💬 **Posso ajudar com informações específicas sobre algum serviço?**`;
+                    } else {
+                        resposta = `Olá! 👋 Sou o assistente virtual do **Grupo OC**.
+
+Oferecemos soluções empresariais através de 3 divisões:
+• **OC TEL** - Soluções em Telecom
+• **OC DIGITAL** - Marketing Digital  
+• **OC SAÚDE** - Planos Empresariais
+
+💬 **Como posso ajudar você hoje?**
+🔹 Informações sobre serviços
+🔹 Como entrar em contato
+🔹 Solicitar orçamento`;
+                    }
+                    
+                    fonteResposta = 'fallback_garantido';
                 }
             }
         }
+        
+        // Garantir que sempre temos uma resposta
+        if (!resposta) {
+            resposta = "Olá! 👋 Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?";
+            fonteResposta = 'fallback_final';
+        }
+        
+        console.log('📤 Enviando resposta:', {
+            tipo: tipoMensagem,
+            fonte: fonteResposta,
+            tamanho: resposta.length
+        });
         
         res.json({
             success: true,
@@ -2389,6 +2571,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
