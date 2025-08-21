@@ -13,7 +13,7 @@
 
 ## 3. VARIÁVEIS DE AMBIENTE (.env)
 # OpenAI Configuration
-OPENAI_API_KEY=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
+OPENAI_API_KEY=process.env.OPENAI_API_KEY
 
 # Email Configuration (Gmail/Google Workspace)
 EMAIL_USER=bruno.grupooc@gmail.com
@@ -58,3 +58,4 @@ EMAIL_DESTINO=elcio.silva@grupooc.com.br,comercial@grupooc.com.br
 - Leads salvos em arquivo JSON
 - Backup diário recomendado
 - Monitoramento de espaço em disco
+
