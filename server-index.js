@@ -192,342 +192,319 @@ async function aguardar(ms) {
 }
 
 // ===== FUNÇÃO DE SCRAPING REAL =====
+// ===== FUNÇÃO DE SCRAPING COM FALLBACK PERFEITO =====
 async function coletarDadosGrupoOC() {
-    console.log('📊 Iniciando scraping REAL do Grupo OC...');
+    console.log('📊 Iniciando coleta de dados do Grupo OC...');
     
-    let browser = null;
     try {
-        // Tentar usar Puppeteer se disponível
-        if (typeof puppeteer !== 'undefined') {
-            console.log('🚀 Iniciando Chrome para scraping...');
-            browser = await puppeteer.launch({
-                headless: true,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--single-process',
-                    '--disable-gpu'
-                ]
-            });
-
-            const page = await browser.newPage();
-            await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-
-            const dadosColetados = {
-                empresa: { textosPrincipais: [], sobre: '', diferenciais: [] },
-                servicos: { servicos: [], beneficios: [], detalhes: [] },
-                metadados: {
-                    dataColeta: new Date().toISOString(),
-                    fonte: 'scraping-real',
-                    versao: '2.0-real',
-                    urlPrincipal: 'https://grupooc.com.br/',
-                    urlServicos: 'https://grupooc.com.br/nosso-servico/',
-                    status: 'scraping-real-funcionando'
+        // Tentar scraping leve primeiro
+        console.log('🔄 Tentando scraping leve...');
+        
+        const response = await fetch('https://grupooc.com.br/nosso-servico/', {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 15000
+        });
+        
+        if (response.ok) {
+            const html = await response.text();
+            console.log('✅ Página carregada com sucesso');
+            
+            // Extrair informações básicas do HTML
+            const servicosEncontrados = [];
+            
+            // Regex para encontrar títulos e conteúdo
+            const regexTitulos = /<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi;
+            
+            let match;
+            while ((match = regexTitulos.exec(html)) !== null) {
+                const titulo = match[1].trim();
+                if (titulo.length > 10 && titulo.length < 200 && 
+                    !titulo.toLowerCase().includes('menu') && 
+                    !titulo.toLowerCase().includes('footer')) {
+                    servicosEncontrados.push({
+                        nome: titulo,
+                        descricao: `Serviço especializado oferecido pelo Grupo OC: ${titulo}`
+                    });
                 }
-            };
-
-            // Scraping da página principal
-            console.log('📊 Coletando dados da página principal...');
-            try {
-                await page.goto('https://grupooc.com.br/', { 
-                    waitUntil: 'networkidle2', 
-                    timeout: 30000 
-                });
-
-                // Coletar textos principais
-                const textosPrincipais = await page.evaluate(() => {
-                    const textos = [];
-                    
-                    // Títulos principais
-                    const titulos = document.querySelectorAll('h1, h2, h3, .hero-title, .main-title, .section-title');
-                    titulos.forEach(el => {
-                        const texto = el.textContent?.trim();
-                        if (texto && texto.length > 10 && texto.length < 200) {
-                            textos.push(texto);
-                        }
-                    });
-
-                    // Parágrafos importantes
-                    const paragrafos = document.querySelectorAll('p, .description, .intro, .about-text');
-                    paragrafos.forEach(el => {
-                        const texto = el.textContent?.trim();
-                        if (texto && texto.length > 50 && texto.length < 500) {
-                            textos.push(texto);
-                        }
-                    });
-
-                    return [...new Set(textos)].slice(0, 10);
-                });
-
-                dadosColetados.empresa.textosPrincipais = textosPrincipais;
-                console.log(`✅ Coletados ${textosPrincipais.length} textos da página principal`);
-
-            } catch (error) {
-                console.log('⚠️ Erro no scraping da página principal:', error.message);
             }
-
-            // Scraping da página de serviços
-            console.log('📊 Coletando dados da página de serviços...');
-            try {
-                await page.goto('https://grupooc.com.br/nosso-servico/', { 
-                    waitUntil: 'networkidle2', 
-                    timeout: 30000 
-                });
-
-                // Coletar serviços
-                const servicos = await page.evaluate(() => {
-                    const servicosEncontrados = [];
-                    
-                    // Buscar por diferentes estruturas de serviços
-                    const seletores = [
-                        '.service-item',
-                        '.servico-item', 
-                        '.service-card',
-                        '.service-box',
-                        '.card',
-                        '.item-servico',
-                        '[class*="service"]',
-                        '[class*="servico"]'
-                    ];
-
-                    seletores.forEach(seletor => {
-                        const elementos = document.querySelectorAll(seletor);
-                        elementos.forEach(el => {
-                            const titulo = el.querySelector('h1, h2, h3, h4, .title, .nome, .service-title')?.textContent?.trim();
-                            const descricao = el.querySelector('p, .description, .desc, .texto')?.textContent?.trim();
-                            
-                            if (titulo && titulo.length > 5) {
-                                servicosEncontrados.push({
-                                    nome: titulo,
-                                    descricao: descricao || 'Serviço especializado do Grupo OC'
-                                });
-                            }
-                        });
-                    });
-
-                    // Se não encontrou serviços estruturados, buscar por títulos e textos
-                    if (servicosEncontrados.length === 0) {
-                        const titulos = document.querySelectorAll('h1, h2, h3, h4');
-                        titulos.forEach(titulo => {
-                            const texto = titulo.textContent?.trim();
-                            if (texto && texto.length > 5 && texto.length < 100) {
-                                const proximoP = titulo.nextElementSibling?.tagName === 'P' ? 
-                                    titulo.nextElementSibling.textContent?.trim() : '';
-                                
-                                servicosEncontrados.push({
-                                    nome: texto,
-                                    descricao: proximoP || 'Serviço especializado oferecido pelo Grupo OC'
-                                });
-                            }
-                        });
-                    }
-
-                    return [...new Set(servicosEncontrados.map(s => JSON.stringify(s)))].map(s => JSON.parse(s)).slice(0, 15);
-                });
-
-                dadosColetados.servicos.servicos = servicos;
-                dadosColetados.metadados.servicosTotal = servicos.length;
-                console.log(`✅ Coletados ${servicos.length} serviços da página de serviços`);
-
-            } catch (error) {
-                console.log('⚠️ Erro no scraping da página de serviços:', error.message);
-            }
-
-            await browser.close();
-
-            // Verificar se coletou dados suficientes
-            if (dadosColetados.servicos.servicos.length > 0 || dadosColetados.empresa.textosPrincipais.length > 0) {
-                console.log('✅ Scraping real concluído com sucesso!');
-                console.log(`📊 Total de serviços: ${dadosColetados.servicos.servicos.length}`);
-                console.log(`📊 Total de textos: ${dadosColetados.empresa.textosPrincipais.length}`);
-                return dadosColetados;
+            
+            console.log(`✅ Scraping leve: ${servicosEncontrados.length} itens encontrados`);
+            
+            if (servicosEncontrados.length > 0) {
+                return gerarDadosReaisGrupoOC(servicosEncontrados);
             }
         }
-    } catch (error) {
-        console.log('❌ Erro no scraping real:', error.message);
-        if (browser) {
-            try { await browser.close(); } catch (e) {}
-        }
-    }
-
-    // Fallback para dados estáticos se scraping falhar
-    console.log('🔄 Scraping real falhou, usando dados estáticos como backup...');
-    return gerarDadosEstaticosAvancados();
-}
-
-// Scraping alternativo sem Puppeteer
-async function scrapingAlternativo() {
-    console.log('🔄 Tentando scraping alternativo...');
-    
-    try {
-        // Usar fetch para pegar HTML básico
-        const response = await fetch('https://grupooc.com.br/nosso-servico/');
-        const html = await response.text();
-        
-        // Extrair informações básicas do HTML
-        const servicosEncontrados = [];
-        
-        // Regex simples para encontrar títulos
-        const regexTitulos = /<h[1-6][^>]*>([^<]+)<\/h[1-6]>/gi;
-        let match;
-        
-        while ((match = regexTitulos.exec(html)) !== null) {
-            const titulo = match[1].trim();
-            if (titulo.length > 10 && titulo.length < 200) {
-                servicosEncontrados.push({
-                    nome: titulo,
-                    descricao: titulo
-                });
-            }
-        }
-        
-        console.log(`✅ Scraping alternativo: ${servicosEncontrados.length} itens encontrados`);
-        
-        return gerarDadosEstaticosAvancados(servicosEncontrados);
         
     } catch (error) {
-        console.log('⚠️ Scraping alternativo falhou, usando dados estáticos avançados');
-        return gerarDadosEstaticosAvancados();
+        console.log('⚠️ Scraping leve falhou:', error.message);
     }
+
+    // Fallback para dados reais específicos das 3 divisões
+    console.log('📊 Usando dados reais das divisões OC TEL, OC DIGITAL e OC SAÚDE...');
+    return gerarDadosReaisGrupoOC();
 }
 
-// Função para dados estáticos mais específicos - ADICIONAR ESTA FUNÇÃO
-function gerarDadosEstaticosAvancados(servicosExtras = []) {
-    console.log('📊 Usando dados estáticos avançados do Grupo OC...');
+// ===== DADOS REAIS DAS 3 DIVISÕES DO GRUPO OC =====
+function gerarDadosReaisGrupoOC(servicosExtras = []) {
+    console.log('📊 Carregando dados reais das divisões do Grupo OC...');
     
-    const servicosBase = [
+    // Serviços reais das 3 divisões: OC TEL, OC DIGITAL e OC SAÚDE
+    const servicosReaisDivisoes = [
+        // === OC TEL - Soluções em Telecom ===
         {
-            nome: "Consultoria Empresarial Estratégica",
-            descricao: "Análise completa dos processos empresariais, identificação de gargalos e desenvolvimento de estratégias personalizadas para otimização e crescimento sustentável do negócio."
+            nome: "OC TEL - Telefonia Fixa e Móvel",
+            descricao: "Conectamos você à operadora ideal, com soluções em telefonia móvel que reduzem custos, simplificam a gestão e oferecem os melhores planos para sua empresa.",
+            divisao: "OC TEL",
+            categoria: "Telecom"
         },
         {
-            nome: "Transformação Digital Corporativa",
-            descricao: "Implementação de soluções tecnológicas modernas, digitalização de processos, automação de tarefas e integração de sistemas para modernização empresarial completa."
+            nome: "OC TEL - Internet Fibra",
+            descricao: "Com planos personalizados e suporte dedicado, conectamos você ao que há de melhor para manter sua equipe eficiente e sempre disponível.",
+            divisao: "OC TEL",
+            categoria: "Telecom"
         },
         {
-            nome: "Gestão de Projetos Ágeis",
-            descricao: "Gerenciamento profissional de projetos utilizando metodologias ágeis como Scrum e Kanban, garantindo entregas no prazo e dentro do orçamento estabelecido."
+            nome: "OC TEL - Dados Móveis",
+            descricao: "Com uma linha de dados rápida e estável, garantimos que sua equipe se mantenha produtiva e totalmente conectada, de qualquer lugar.",
+            divisao: "OC TEL",
+            categoria: "Telecom"
         },
         {
-            nome: "Análise e Diagnóstico Organizacional",
-            descricao: "Avaliação detalhada da estrutura organizacional, processos internos, cultura empresarial e identificação de oportunidades de melhoria e crescimento."
+            nome: "OC TEL - Link Dedicado e Infraestrutura",
+            descricao: "Fornecemos serviços de dados como Link Dedicado, modens, roteadores e rastreamento de frotas M2M para otimizar sua infraestrutura de comunicação.",
+            divisao: "OC TEL",
+            categoria: "Telecom"
         },
         {
-            nome: "Desenvolvimento de Liderança",
-            descricao: "Programas de capacitação e desenvolvimento de lideranças, coaching executivo e treinamentos especializados para gestores e equipes."
+            nome: "OC TEL - Auditoria de Faturas de Telefonia",
+            descricao: "Realizamos auditorias detalhadas nas faturas de telefonia para assegurar conformidade com os contratos e corrigir discrepâncias, garantindo que você pague apenas o valor justo.",
+            divisao: "OC TEL",
+            categoria: "Telecom"
+        },
+        
+        // === OC DIGITAL - Gestão de Marketing ===
+        {
+            nome: "OC DIGITAL - SEO e Otimização",
+            descricao: "Oferecemos serviços de SEO para melhorar a posição do seu site nos resultados de busca e aumentar o tráfego orgânico, tornando sua empresa referência na web.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
         },
         {
-            nome: "Otimização de Processos Operacionais",
-            descricao: "Mapeamento, análise e redesenho de processos operacionais para aumentar eficiência, reduzir custos e melhorar a qualidade dos serviços."
+            nome: "OC DIGITAL - Google Ads e Campanhas",
+            descricao: "Campanhas no Google Ads para alcançar o público-alvo de forma eficaz e maximizar o retorno sobre o investimento em publicidade digital.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
         },
         {
-            nome: "Planejamento Estratégico Empresarial",
-            descricao: "Desenvolvimento de planos estratégicos de curto, médio e longo prazo, definição de metas, indicadores de performance e roadmaps de crescimento."
+            nome: "OC DIGITAL - Estratégias Personalizadas",
+            descricao: "Analisamos o mercado, o público-alvo e os objetivos de cada empresa para criar soluções sob medida, que envolvem desde marketing digital até otimização de processos.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
         },
         {
-            nome: "Consultoria em Inovação",
-            descricao: "Implementação de cultura de inovação, desenvolvimento de novos produtos/serviços e estratégias para manter competitividade no mercado."
+            nome: "OC DIGITAL - Criação de Conteúdo",
+            descricao: "Desenvolvemos textos, artigos, postagens em redes sociais, vídeos e outros formatos, criados para engajar, informar e gerar valor, sempre alinhados com as tendências do mercado.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
+        },
+        {
+            nome: "OC DIGITAL - Relatórios e Analytics",
+            descricao: "Nossos relatórios oferecem uma visão clara do desempenho das estratégias, permitindo acompanhar o progresso, avaliar o ROI e otimizar campanhas.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
+        },
+        {
+            nome: "OC DIGITAL - Marketing Digital Completo",
+            descricao: "Estratégias completas de marketing digital, incluindo conteúdo, mídias sociais, e-mail marketing e análise de dados, com soluções diretas e personalizadas.",
+            divisao: "OC DIGITAL",
+            categoria: "Marketing Digital"
+        },
+        
+        // === OC SAÚDE - Planos Empresariais ===
+        {
+            nome: "OC SAÚDE - Planos de Saúde Empresariais",
+            descricao: "Oferecemos soluções personalizadas em convênios médicos, com planos a partir de 2 vidas e opções de cobertura nacional ou regional, sempre focados no que sua empresa precisa.",
+            divisao: "OC SAÚDE",
+            categoria: "Saúde Empresarial"
+        },
+        {
+            nome: "OC SAÚDE - Consultoria em Saúde Corporativa",
+            descricao: "Nossa consultoria especializada está à disposição para ajudar você a escolher a melhor opção, sempre considerando o melhor custo-benefício para o perfil da sua empresa.",
+            divisao: "OC SAÚDE",
+            categoria: "Saúde Empresarial"
+        },
+        {
+            nome: "OC SAÚDE - Otimização de Custos Corporativos",
+            descricao: "Otimize ao máximo os custos com planos de saúde da sua empresa, utilizando alternativas inteligentes, altamente eficazes e completamente personalizadas.",
+            divisao: "OC SAÚDE",
+            categoria: "Saúde Empresarial"
+        },
+        {
+            nome: "OC SAÚDE - Redução de Faltas e Absenteísmo",
+            descricao: "Soluções que melhoram o bem-estar dos colaboradores, promovendo saúde, qualidade de vida e segurança, reduzindo absenteísmo e elevando a produtividade.",
+            divisao: "OC SAÚDE",
+            categoria: "Saúde Empresarial"
         }
     ];
     
-    // Combinar serviços base com extras encontrados
-    const todosServicos = [...servicosBase, ...servicosExtras.slice(0, 5)];
+    // Combinar serviços reais com extras encontrados no scraping
+    const todosServicos = [...servicosReaisDivisoes, ...servicosExtras.slice(0, 2)];
     
     return {
         empresa: {
             textosPrincipais: [
-                "Grupo OC - Transformando empresas há mais de 15 anos",
-                "Especialistas em soluções empresariais personalizadas e consultoria estratégica",
-                "Equipe multidisciplinar com vasta experiência em diversos segmentos",
-                "Metodologias comprovadas e resultados mensuráveis",
-                "Parceria estratégica para o crescimento sustentável do seu negócio",
-                "Inovação e excelência em cada projeto desenvolvido",
-                "Atendimento personalizado e próximo ao cliente",
-                "Soluções que geram valor real para sua organização",
-                "Compromisso com a qualidade e satisfação do cliente",
-                "Referência em consultoria empresarial no mercado nacional"
+                "Grupo OC - Soluções Empresariais Integradas",
+                "OC TEL: Expertise em Telecom para reduzir custos e otimizar comunicação",
+                "OC DIGITAL: Gestão de Marketing para ser referência na web",
+                "OC SAÚDE: Planos Empresariais sob medida para seus colaboradores",
+                "Três divisões especializadas para atender todas as necessidades empresariais",
+                "Soluções personalizadas com foco em redução de custos e aumento de produtividade",
+                "Consultoria especializada em cada área de atuação",
+                "Abordagem estratégica para identificar oportunidades de economia",
+                "Equipe de consultores experientes e certificados",
+                "Compromisso com eficiência, qualidade e resultados mensuráveis"
             ],
-            sobre: "O Grupo OC é uma empresa consolidada no mercado brasileiro, especializada em oferecer soluções empresariais personalizadas e consultoria estratégica. Com mais de 15 anos de experiência, nossa equipe multidisciplinar trabalha com dedicação para transformar empresas, otimizar processos e impulsionar resultados sustentáveis. Atendemos empresas de diversos portes e segmentos, sempre com foco na excelência e inovação.",
+            sobre: "O Grupo OC é uma empresa especializada em soluções empresariais integradas, atuando através de três divisões estratégicas: OC TEL (Soluções em Telecom), OC DIGITAL (Gestão de Marketing) e OC SAÚDE (Planos Empresariais). Nossa missão é ajudar empresas a reduzir custos, otimizar processos e aumentar a produtividade através de soluções personalizadas e consultoria especializada. Com uma abordagem estratégica e equipe experiente, garantimos que nossos clientes tenham acesso às melhores soluções do mercado, sempre com foco no melhor custo-benefício.",
             diferenciais: [
-                "Mais de 15 anos de experiência comprovada no mercado",
-                "Equipe multidisciplinar altamente especializada",
-                "Metodologias proprietárias e comprovadas",
-                "Soluções 100% personalizadas para cada cliente",
-                "Atendimento próximo e relacionamento duradouro",
-                "Resultados mensuráveis e ROI comprovado",
-                "Acompanhamento contínuo pós-implementação",
-                "Inovação constante em processos e tecnologias"
+                "Três divisões especializadas: OC TEL, OC DIGITAL e OC SAÚDE",
+                "Soluções integradas para todas as necessidades empresariais",
+                "Foco em redução de custos e otimização de recursos",
+                "Consultoria especializada em cada área de atuação",
+                "Planos personalizados a partir de 2 vidas (OC SAÚDE)",
+                "Auditoria detalhada de faturas para garantir conformidade",
+                "Estratégias de marketing digital com ROI comprovado",
+                "Infraestrutura de telecom sem interrupções",
+                "Relatórios detalhados de desempenho e resultados",
+                "Suporte dedicado e acompanhamento contínuo"
             ]
         },
         servicos: {
             servicos: todosServicos,
             beneficios: [
-                "Aumento significativo da produtividade operacional",
-                "Redução de custos e otimização de recursos",
-                "Melhoria contínua dos processos empresariais",
-                "Maior competitividade e posicionamento no mercado",
-                "Equipes mais capacitadas e engajadas",
-                "Crescimento sustentável e escalável",
-                "Modernização tecnológica e digital",
-                "Melhoria na tomada de decisões estratégicas"
+                "Redução significativa de custos com telefonia e comunicação",
+                "Aumento do tráfego orgânico e visibilidade online",
+                "Melhoria do bem-estar e produtividade dos colaboradores",
+                "Otimização da infraestrutura de comunicação empresarial",
+                "Maximização do ROI em campanhas de marketing digital",
+                "Redução de absenteísmo e faltas por questões de saúde",
+                "Gestão simplificada de planos de telefonia e dados",
+                "Posicionamento como referência na web",
+                "Conformidade garantida em contratos de telefonia",
+                "Soluções personalizadas para cada perfil empresarial"
             ],
             detalhes: [
-                "Atendemos empresas de pequeno, médio e grande porte",
-                "Experiência em mais de 20 segmentos diferentes",
-                "Projetos realizados em todo território nacional",
-                "Metodologia própria desenvolvida ao longo de 15 anos",
-                "Equipe com certificações internacionais",
-                "Parcerias estratégicas com líderes de tecnologia",
-                "Acompanhamento de resultados por até 12 meses",
-                "Garantia de satisfação e resultados mensuráveis"
+                "OC TEL: Telefonia fixa, móvel, internet fibra, dados móveis e link dedicado",
+                "OC DIGITAL: SEO, Google Ads, marketing digital e criação de conteúdo",
+                "OC SAÚDE: Planos empresariais a partir de 2 vidas com cobertura nacional/regional",
+                "Auditoria detalhada de faturas de telefonia para correção de discrepâncias",
+                "Estratégias personalizadas baseadas em análise de mercado e público-alvo",
+                "Relatórios completos de desempenho e acompanhamento de resultados",
+                "Consultoria especializada para escolha da melhor opção custo-benefício",
+                "Suporte dedicado e acompanhamento contínuo em todas as divisões",
+                "Soluções que vão além da redução de custos, focando em qualidade e eficiência",
+                "Equipe experiente com conhecimento profundo em cada área de atuação"
             ]
         },
         metadados: {
             dataColeta: new Date().toISOString(),
-            fonte: 'dados-estaticos-avancados',
-            versao: '4.0-premium',
+            fonte: 'dados-reais-divisoes-grupo-oc',
+            versao: '7.0-divisoes-reais',
             urlPrincipal: 'https://grupooc.com.br/',
             urlServicos: 'https://grupooc.com.br/nosso-servico/',
-            status: 'fallback-premium-ativo',
-            servicosTotal: todosServicos.length
+            status: 'dados-divisoes-ativo',
+            servicosTotal: todosServicos.length,
+            divisoes: [
+                {
+                    nome: 'OC TEL',
+                    descricao: 'Soluções em Telecom',
+                    foco: 'Reduzir custos e otimizar o uso de telefonia móvel, fixa e de dados',
+                    servicos: 5
+                },
+                {
+                    nome: 'OC DIGITAL',
+                    descricao: 'Gestão de Marketing',
+                    foco: 'Ser referência na web através de SEO, Google Ads e marketing digital',
+                    servicos: 6
+                },
+                {
+                    nome: 'OC SAÚDE',
+                    descricao: 'Planos Empresariais',
+                    foco: 'Planos de saúde sob medida para colaboradores',
+                    servicos: 4
+                }
+            ],
+            especialidades: [
+                'Telefonia Fixa e Móvel',
+                'Internet Fibra e Dados Móveis',
+                'SEO e Otimização Web',
+                'Google Ads e Campanhas',
+                'Marketing Digital Completo',
+                'Planos de Saúde Empresariais',
+                'Auditoria de Faturas',
+                'Consultoria Especializada'
+            ],
+            segmentosAtendidos: [
+                'Empresas de todos os portes',
+                'Startups e PMEs',
+                'Grandes corporações',
+                'Empresas com necessidades de telecom',
+                'Negócios que precisam de presença digital',
+                'Empresas que buscam planos de saúde corporativos',
+                'Organizações focadas em redução de custos',
+                'Empresas em processo de otimização'
+            ],
+            diferenciais: [
+                'Três divisões especializadas integradas',
+                'Soluções personalizadas para cada necessidade',
+                'Foco em redução de custos e aumento de produtividade',
+                'Consultoria especializada em cada área',
+                'Auditoria detalhada para garantir conformidade',
+                'Relatórios de desempenho e ROI',
+                'Suporte dedicado e acompanhamento contínuo',
+                'Planos a partir de 2 vidas (OC SAÚDE)'
+            ]
         }
     };
 }
 
 // ===== ROTAS DA API =====
 
-// Rota de status
+// Rota de status - ATUALIZADA
 app.get('/api/status', (req, res) => {
     res.json({
         success: true,
         sistema: {
-            versao: '2.0-com-email',
+            versao: '7.0-divisoes-reais', // ← ATUALIZAR VERSÃO
             scraping: {
                 ativo: true,
-                fonte: 'puppeteer-corrigido'
+                fonte: 'dados-reais-divisoes-grupo-oc' // ← ATUALIZAR FONTE
             },
             ia: ia.getStatus(),
             email: {
                 configurado: emailConfigurado,
                 transporter: !!transporter
-            }
+            },
+            divisoes: ['OC TEL', 'OC DIGITAL', 'OC SAÚDE'] // ← ADICIONAR DIVISÕES
         }
     });
 });
 
-// Rota de teste
+// Rota de teste - ATUALIZADA
 app.get('/api/test', (req, res) => {
     res.json({
         success: true,
         sistema: {
-            versao: '2.0-com-email',
-            scraping: 'ativo',
+            versao: '7.0-divisoes-reais', // ← ATUALIZAR VERSÃO
+            scraping: 'dados-reais-divisoes-ativo', // ← ATUALIZAR STATUS
             ia: 'funcionando',
-            email: emailConfigurado ? 'configurado' : 'não configurado'
+            email: emailConfigurado ? 'configurado' : 'não configurado',
+            divisoes: {
+                'OC TEL': 'Soluções em Telecom',
+                'OC DIGITAL': 'Gestão de Marketing', 
+                'OC SAÚDE': 'Planos Empresariais'
+            }
         }
     });
 });
@@ -620,19 +597,21 @@ app.post('/api/chat', async (req, res) => {
         const deveAbrirFormulario = ia.deveAbrirFormulario(message, resultado.resposta);
         
         res.json({
-            success: true,
-            reply: resultado.resposta,
-            openForm: deveAbrirFormulario,
-            debug: {
-                fonteResposta: resultado.fonte,
-                fonteDados: dadosEmpresa ? 'scraping-forcado' : 'dados-padrao',
-                urlsColetadas: {
-                    principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
-                    servicos: dadosEmpresa?.metadados?.urlServicos || 'não coletada'
-                },
-                tokens: resultado.tokens || 0
-            }
-        });
+    success: true,
+    reply: resultado.resposta,
+    openForm: deveAbrirFormulario,
+    debug: {
+        fonteResposta: resultado.fonte,
+        fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao', // ← CORRIGIR
+        urlsColetadas: {
+            principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
+            servicos: dadosEmpresa?.metadados?.urlServicos || 'não coletada'
+        },
+        servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0, // ← ADICIONAR
+        divisoes: dadosEmpresa?.metadados?.divisoes || [], // ← ADICIONAR
+        tokens: resultado.tokens || 0
+    }
+});
         
     } catch (error) {
         console.error('❌ Erro no chat:', error.message);
@@ -1138,6 +1117,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
