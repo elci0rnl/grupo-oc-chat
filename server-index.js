@@ -1536,40 +1536,69 @@ app.get('/widget', (req, res) => {
         typing.style.display = 'none';
     }
 
-    // ===== FUNÇÕES DO FORMULÁRIO - VERSÃO GARANTIDA =====
+    // ===== FUNÇÃO DE ABERTURA GARANTIDA =====
     function openLeadForm() {
-        console.log('🎯 FORÇANDO ABERTURA DO FORMULÁRIO...');
+        console.log('🎯 === INICIANDO ABERTURA DO FORMULÁRIO ===');
         
+        // Marcar como aberto ANTES de tudo
         leadFormOpen = true;
         
         // Buscar elemento
         const overlay = document.getElementById('leadFormOverlay');
-        console.log('• Elemento encontrado:', !!overlay);
+        console.log('🔍 Elemento overlay encontrado:', !!overlay);
         
-        if (overlay) {
-            // FORÇAR DISPLAY
-            overlay.style.display = 'flex';
-            overlay.style.position = 'fixed';
-            overlay.style.top = '0';
-            overlay.style.left = '0';
-            overlay.style.width = '100%';
-            overlay.style.height = '100%';
-            overlay.style.zIndex = '10000';
-            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-            
-            console.log('✅ FORMULÁRIO FORÇADO A APARECER!');
-            
-            // Focar no primeiro campo
-            setTimeout(() => {
-                const nomeField = document.getElementById('leadNome');
-                if (nomeField) {
-                    nomeField.focus();
-                }
-            }, 500);
-        } else {
-            console.error('❌ ELEMENTO leadFormOverlay NÃO ENCONTRADO!');
-            alert('TESTE: Formulário deveria abrir agora!');
+        if (!overlay) {
+            console.error('❌ ERRO: leadFormOverlay não encontrado!');
+            alert('ERRO: Formulário não encontrado no DOM');
+            return;
         }
+        
+        // FORÇAR TODOS OS ESTILOS NECESSÁRIOS
+        console.log('🔧 Aplicando estilos forçados...');
+        overlay.style.display = 'flex';
+        overlay.style.position = 'fixed';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100vw';
+        overlay.style.height = '100vh';
+        overlay.style.zIndex = '999999';
+        overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        overlay.style.alignItems = 'center';
+        overlay.style.justifyContent = 'center';
+        overlay.style.visibility = 'visible';
+        overlay.style.opacity = '1';
+        
+        // Verificar se container interno existe
+        const container = overlay.querySelector('.lead-form-container');
+        if (container) {
+            console.log('🔧 Aplicando estilos no container...');
+            container.style.display = 'block';
+            container.style.visibility = 'visible';
+            container.style.opacity = '1';
+            container.style.transform = 'scale(1)';
+            container.style.zIndex = '1000000';
+        }
+        
+        console.log('✅ FORMULÁRIO DEVE ESTAR VISÍVEL AGORA!');
+        
+        // Focar no primeiro campo após um delay
+        setTimeout(() => {
+            const nomeField = document.getElementById('leadNome');
+            if (nomeField) {
+                nomeField.focus();
+                console.log('🎯 Foco aplicado no campo nome');
+            }
+        }, 500);
+        
+        // VERIFICAÇÃO FINAL
+        setTimeout(() => {
+            const computedStyle = window.getComputedStyle(overlay);
+            console.log('�� Verificação final:');
+            console.log('• display:', computedStyle.display);
+            console.log('• visibility:', computedStyle.visibility);
+            console.log('• opacity:', computedStyle.opacity);
+            console.log('• z-index:', computedStyle.zIndex);
+        }, 1000);
     }
 
     function closeLeadForm() {
@@ -1595,7 +1624,7 @@ app.get('/widget', (req, res) => {
         if (success) success.style.display = 'none';
     }
 
-    // ===== FUNÇÃO DE ENVIO DE MENSAGEM =====
+    // ===== FUNÇÃO DE ENVIO DE MENSAGEM - MELHORADA =====
     async function sendMessage() {
         const message = messageInput.value.trim();
         if (!message) return;
@@ -1605,40 +1634,76 @@ app.get('/widget', (req, res) => {
         showTyping();
 
         try {
+            console.log('📤 Enviando mensagem:', message);
+            
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify({ 
+                    message: message,
+                    sessionId: 'widget-' + Date.now() // Sessão única
+                })
             });
 
             const data = await response.json();
             hideTyping();
             
-            console.log('📊 RESPOSTA COMPLETA:', data);
+            console.log('📊 === RESPOSTA COMPLETA ===');
+            console.log('• success:', data.success);
+            console.log('• openForm:', data.openForm);
+            console.log('• openForm tipo:', typeof data.openForm);
+            console.log('• reply length:', data.reply?.length);
+            console.log('• debug:', data.debug);
             
             if (data.success) {
                 addMessage(data.reply);
                 
-                // ===== VERIFICAÇÃO SUPER SIMPLES =====
-                console.log('🔍 Verificando openForm:', data.openForm);
+                // ===== VERIFICAÇÃO SUPER DETALHADA =====
+                console.log('�� === VERIFICANDO ABERTURA DO FORMULÁRIO ===');
+                console.log('• data.openForm:', data.openForm);
+                console.log('• data.openForm === true:', data.openForm === true);
+                console.log('• leadFormOpen atual:', leadFormOpen);
+                console.log('• !leadFormOpen:', !leadFormOpen);
                 
-                if (data.openForm) {
-                    console.log('🎯 DEVE ABRIR FORMULÁRIO! Abrindo em 1 segundo...');
+                // CONDIÇÕES MÚLTIPLAS PARA GARANTIR
+                const deveAbrir = data.openForm === true || 
+                                data.openForm === 'true' || 
+                                data.openForm == true ||
+                                (data.debug && data.debug.interesseDetectado === true);
+                
+                console.log('• deveAbrir (calculado):', deveAbrir);
+                console.log('• Condição final:', deveAbrir && !leadFormOpen);
+                
+                if (deveAbrir && !leadFormOpen) {
+                    console.log('�� === ABRINDO FORMULÁRIO ===');
+                    console.log('• Aguardando 500ms...');
+                    
                     setTimeout(() => {
+                        console.log('⏰ Timeout executado, chamando openLeadForm()');
                         openLeadForm();
-                    }, 1000);
+                    }, 500);
+                    
                 } else {
-                    console.log('ℹ️ Não precisa abrir formulário');
+                    console.log('❌ === NÃO VAI ABRIR FORMULÁRIO ===');
+                    if (!deveAbrir) {
+                        console.log('  → Motivo: deveAbrir é false');
+                        console.log('  → data.openForm:', data.openForm);
+                        console.log('  → interesseDetectado:', data.debug?.interesseDetectado);
+                    }
+                    if (leadFormOpen) {
+                        console.log('  → Motivo: leadFormOpen já é true');
+                    }
                 }
             } else {
+                console.error('❌ Erro na resposta:', data.error);
                 addMessage('Desculpe, ocorreu um erro. Tente novamente.');
             }
         } catch (error) {
             hideTyping();
             addMessage('Erro de conexão. Verifique sua internet e tente novamente.');
-            console.error('❌ Erro:', error);
+            console.error('❌ Erro na requisição:', error);
         }
     }
 
@@ -1649,29 +1714,7 @@ app.get('/widget', (req, res) => {
         }
     });
 
-    // ===== INICIALIZAÇÃO QUANDO PÁGINA CARREGAR =====
-    window.addEventListener('load', function() {
-        console.log('🚀 WIDGET CARREGADO!');
-        
-        // Verificar se elementos existem
-        const overlay = document.getElementById('leadFormOverlay');
-        const form = document.getElementById('leadForm');
-        
-        console.log('🔍 VERIFICAÇÃO DE ELEMENTOS:');
-        console.log('• leadFormOverlay:', !!overlay);
-        console.log('• leadForm:', !!form);
-        
-        if (overlay && form) {
-            console.log('✅ TODOS OS ELEMENTOS ENCONTRADOS!');
-            
-            // Configurar event listeners do formulário
-            setupFormListeners();
-        } else {
-            console.error('❌ ELEMENTOS DO FORMULÁRIO NÃO ENCONTRADOS!');
-        }
-    });
-
-    // ===== CONFIGURAR FORMULÁRIO =====
+    // ===== CONFIGURAÇÃO DO FORMULÁRIO =====
     function setupFormListeners() {
         console.log('⚙️ Configurando listeners do formulário...');
         
@@ -1719,6 +1762,7 @@ app.get('/widget', (req, res) => {
                     });
                     
                     const result = await response.json();
+                    console.log('�� Resultado envio lead:', result);
                     
                     if (result.success) {
                         document.getElementById('leadFormLoading').style.display = 'none';
@@ -1768,10 +1812,43 @@ app.get('/widget', (req, res) => {
         console.log('✅ Listeners do formulário configurados!');
     }
 
-    // ===== FUNÇÃO DE TESTE GLOBAL =====
+    // ===== INICIALIZAÇÃO =====
+    window.addEventListener('load', function() {
+        console.log('🚀 === WIDGET CARREGADO ===');
+        
+        // Verificar elementos
+        const overlay = document.getElementById('leadFormOverlay');
+        const form = document.getElementById('leadForm');
+        
+        console.log('🔍 Verificação de elementos:');
+        console.log('• leadFormOverlay:', !!overlay);
+        console.log('• leadForm:', !!form);
+        
+        if (overlay && form) {
+            console.log('✅ Todos os elementos encontrados!');
+            setupFormListeners();
+        } else {
+            console.error('❌ Elementos do formulário não encontrados!');
+        }
+    });
+
+    // ===== FUNÇÕES GLOBAIS PARA TESTE =====
     window.testarFormulario = function() {
-        console.log('🧪 TESTE MANUAL DO FORMULÁRIO');
+        console.log('🧪 === TESTE MANUAL ===');
         openLeadForm();
+    };
+    
+    window.debugFormulario = function() {
+        console.log('🔍 === DEBUG FORMULÁRIO ===');
+        const overlay = document.getElementById('leadFormOverlay');
+        console.log('• Elemento existe:', !!overlay);
+        if (overlay) {
+            const style = window.getComputedStyle(overlay);
+            console.log('• display:', style.display);
+            console.log('• visibility:', style.visibility);
+            console.log('• opacity:', style.opacity);
+            console.log('• z-index:', style.zIndex);
+        }
     };
 </script>
 </body>
@@ -2265,6 +2342,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
