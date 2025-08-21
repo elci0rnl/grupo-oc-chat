@@ -439,14 +439,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Rota principal para o chat
+// Rota principal para o widget flutuante
 app.get('/', (req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat TIM Corp - Assistente Inteligente</title>
+    <title>Chat Grupo OC - Assistente Inteligente</title>
     <style>
         * {
             margin: 0;
@@ -456,52 +456,126 @@ app.get('/', (req, res) => {
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f0f2f5;
             min-height: 100vh;
+            position: relative;
+        }
+        
+        /* Widget Container */
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Botão de abrir chat */
+        .chat-button {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s ease;
+            border: none;
+            color: white;
+            font-size: 24px;
         }
         
+        .chat-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(76, 175, 80, 0.6);
+        }
+        
+        .chat-button.active {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        /* Container do chat */
         .chat-container {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 350px;
+            height: 500px;
             background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 800px;
-            height: 600px;
-            display: flex;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            display: none;
             flex-direction: column;
             overflow: hidden;
+            animation: slideUp 0.3s ease;
         }
         
+        .chat-container.open {
+            display: flex;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Header do chat */
         .chat-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         
-        .chat-header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+        .chat-header-info h3 {
+            font-size: 16px;
+            margin-bottom: 2px;
         }
         
-        .chat-header p {
+        .chat-header-info p {
+            font-size: 12px;
             opacity: 0.9;
-            font-size: 14px;
         }
         
+        .chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Área de mensagens */
         .chat-messages {
             flex: 1;
-            padding: 20px;
+            padding: 15px;
             overflow-y: auto;
             background: #f8f9fa;
         }
         
         .message {
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             display: flex;
             align-items: flex-start;
         }
@@ -511,10 +585,12 @@ app.get('/', (req, res) => {
         }
         
         .message-content {
-            max-width: 70%;
-            padding: 12px 16px;
-            border-radius: 18px;
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 15px;
             word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
         }
         
         .message.bot .message-content {
@@ -524,114 +600,238 @@ app.get('/', (req, res) => {
         }
         
         .message.user .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
             border-bottom-right-radius: 4px;
         }
         
+        /* Input area */
         .chat-input {
-            padding: 20px;
+            padding: 15px;
             background: white;
             border-top: 1px solid #e9ecef;
         }
         
         .input-group {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            align-items: center;
         }
         
         .input-group input {
             flex: 1;
-            padding: 12px 16px;
+            padding: 10px 15px;
             border: 2px solid #e9ecef;
-            border-radius: 25px;
-            font-size: 16px;
+            border-radius: 20px;
+            font-size: 14px;
             outline: none;
             transition: border-color 0.3s;
         }
         
         .input-group input:focus {
-            border-color: #667eea;
+            border-color: #4CAF50;
         }
         
         .input-group button {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 50%;
             cursor: pointer;
             font-size: 16px;
             transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .input-group button:hover {
-            transform: translateY(-2px);
+            transform: scale(1.1);
         }
         
+        /* Indicador de digitação */
         .typing {
             display: none;
-            padding: 10px;
+            padding: 8px 15px;
             font-style: italic;
             color: #666;
+            font-size: 12px;
         }
         
+        /* Mensagem de boas-vindas */
         .welcome-message {
             text-align: center;
             color: #666;
-            padding: 40px 20px;
+            padding: 20px 15px;
+            font-size: 14px;
         }
         
-        .welcome-message h3 {
+        .welcome-message h4 {
+            margin-bottom: 8px;
+            color: #4CAF50;
+            font-size: 16px;
+        }
+        
+        /* Status online */
+        .online-status {
+            width: 8px;
+            height: 8px;
+            background: #4CAF50;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Responsivo */
+        @media (max-width: 480px) {
+            .chat-container {
+                width: 300px;
+                height: 450px;
+                bottom: 70px;
+                right: 10px;
+            }
+            
+            .chat-widget {
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+        
+        /* Página de demonstração */
+        .demo-content {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .demo-content h1 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        
+        .demo-content p {
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        
+        .demo-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+        }
+        
+        .feature {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .feature h3 {
+            color: #4CAF50;
             margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #28a745;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 1000;
         }
     </style>
 </head>
 <body>
-    <div class="status">🟢 Online</div>
-    
-    <div class="chat-container">
-        <div class="chat-header">
-            <h1>🤖 Chat TIM Corp</h1>
-            <p>Assistente Inteligente - Como posso ajudar você hoje?</p>
-        </div>
+    <!-- Conteúdo da página de demonstração -->
+    <div class="demo-content">
+        <h1>🏢 Chat Grupo OC - Assistente Inteligente</h1>
+        <p>Bem-vindo ao sistema de chat inteligente do Grupo OC. Este widget pode ser integrado em qualquer site para oferecer atendimento automatizado 24/7.</p>
         
-        <div class="chat-messages" id="chatMessages">
-            <div class="welcome-message">
-                <h3>Bem-vindo ao Chat TIM Corp!</h3>
-                <p>Digite sua mensagem abaixo para começar a conversar com nosso assistente inteligente.</p>
+        <div class="demo-features">
+            <div class="feature">
+                <h3>🤖 IA Avançada</h3>
+                <p>Powered by OpenAI com conhecimento específico sobre os serviços do Grupo OC</p>
+            </div>
+            <div class="feature">
+                <h3>🕷️ Dados Atualizados</h3>
+                <p>Scraping automático do site para informações sempre atualizadas</p>
+            </div>
+            <div class="feature">
+                <h3>📱 Widget Responsivo</h3>
+                <p>Interface moderna que funciona perfeitamente em desktop e mobile</p>
+            </div>
+            <div class="feature">
+                <h3>📧 Captura de Leads</h3>
+                <p>Sistema integrado de captura e envio de leads por email</p>
             </div>
         </div>
         
-        <div class="typing" id="typing">
-            Assistente está digitando...
-        </div>
-        
-        <div class="chat-input">
-            <div class="input-group">
-                <input type="text" id="messageInput" placeholder="Digite sua mensagem..." maxlength="500">
-                <button onclick="sendMessage()">Enviar</button>
+        <p style="margin-top: 40px; color: #4CAF50; font-weight: bold;">
+            👉 Clique no botão verde no canto inferior direito para testar o chat!
+        </p>
+    </div>
+
+    <!-- Widget de Chat -->
+    <div class="chat-widget">
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <h3>🏢 Grupo OC</h3>
+                    <p>Assistente Online <span class="online-status"></span></p>
+                </div>
+                <button class="chat-close" onclick="toggleChat()">×</button>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h4>Olá! 👋</h4>
+                    <p>Sou o assistente virtual do Grupo OC. Como posso ajudar você hoje?</p>
+                </div>
+            </div>
+            
+            <div class="typing" id="typing">
+                Assistente está digitando...
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." maxlength="500">
+                    <button onclick="sendMessage()">➤</button>
+                </div>
             </div>
         </div>
+        
+        <button class="chat-button" id="chatButton" onclick="toggleChat()">
+            💬
+        </button>
     </div>
 
     <script>
+        const chatContainer = document.getElementById('chatContainer');
+        const chatButton = document.getElementById('chatButton');
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const typing = document.getElementById('typing');
+        
+        let chatOpen = false;
+
+        function toggleChat() {
+            chatOpen = !chatOpen;
+            
+            if (chatOpen) {
+                chatContainer.classList.add('open');
+                chatButton.classList.add('active');
+                chatButton.innerHTML = '×';
+                messageInput.focus();
+            } else {
+                chatContainer.classList.remove('open');
+                chatButton.classList.remove('active');
+                chatButton.innerHTML = '💬';
+            }
+        }
 
         messageInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -699,10 +899,12 @@ app.get('/', (req, res) => {
             }
         }
 
-        window.onload = function() {
-            messageInput.focus();
-            console.log('Chat TIM Corp carregado com sucesso!');
-        };
+        // Auto-abrir chat após 3 segundos (opcional)
+        setTimeout(() => {
+            if (!chatOpen) {
+                // toggleChat();
+            }
+        }, 3000);
     </script>
 </body>
 </html>`);
@@ -717,5 +919,6 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
