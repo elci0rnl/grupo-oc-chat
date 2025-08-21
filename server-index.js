@@ -64,6 +64,7 @@ function configurarEmail() {
 }
 
 // Função para enviar email de lead
+// Função para enviar email de lead - ATUALIZADA
 async function enviarEmailLead(dadosLead) {
     if (!emailConfigurado || !transporter) {
         console.log('⚠️ Email não configurado, salvando lead apenas no log');
@@ -74,7 +75,7 @@ async function enviarEmailLead(dadosLead) {
         const emailDestino = process.env.LEADS_EMAIL || process.env.EMAIL_DESTINO || process.env.EMAIL_COMERCIAL;
         const emailCC = process.env.LEADS_EMAIL_CC || process.env.EMAIL_COMERCIAL_CC;
         const emailFromName = process.env.EMAIL_FROM_NAME || 'Sistema de Leads - Grupo OC';
-        const emailSubject = process.env.EMAIL_SUBJECT || 'Novo Lead Capturado - Grupo OC';
+        const emailSubject = process.env.EMAIL_SUBJECT || '🎯 Novo Lead Capturado - Chat Widget';
         
         if (!emailDestino) {
             throw new Error('Email de destino não configurado');
@@ -89,21 +90,24 @@ async function enviarEmailLead(dadosLead) {
             <style>
                 body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                 .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+                .header { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; }
                 .content { background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; }
                 .field { margin-bottom: 15px; }
                 .label { font-weight: bold; color: #495057; }
                 .value { background: white; padding: 10px; border-radius: 4px; margin-top: 5px; }
                 .footer { text-align: center; margin-top: 20px; color: #6c757d; font-size: 12px; }
+                .priority { background: #fff3cd; border-left: 4px solid #ffc107; padding: 10px; margin: 15px 0; }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
                     <h2>🎯 Novo Lead Capturado!</h2>
-                    <p>Um novo cliente demonstrou interesse nos serviços do Grupo OC</p>
+                    <p>Um novo cliente demonstrou interesse nos serviços do Grupo OC através do Chat Widget</p>
                 </div>
                 <div class="content">
+                    ${dadosLead.interesse ? '<div class="priority"><strong>⚡ INTERESSE ESPECÍFICO:</strong> ' + dadosLead.interesse + '</div>' : ''}
+                    
                     <div class="field">
                         <div class="label">👤 Nome:</div>
                         <div class="value">${dadosLead.nome || 'Não informado'}</div>
@@ -120,13 +124,18 @@ async function enviarEmailLead(dadosLead) {
                         <div class="label">🏢 Empresa:</div>
                         <div class="value">${dadosLead.empresa || 'Não informado'}</div>
                     </div>
+                    ${dadosLead.cnpj ? `<div class="field"><div class="label">📄 CNPJ:</div><div class="value">${dadosLead.cnpj}</div></div>` : ''}
                     <div class="field">
-                        <div class="label">💼 Interesse:</div>
+                        <div class="label">💼 Principal Interesse:</div>
                         <div class="value">${dadosLead.interesse || 'Não especificado'}</div>
                     </div>
                     <div class="field">
                         <div class="label">💬 Mensagem:</div>
                         <div class="value">${dadosLead.mensagem || 'Nenhuma mensagem adicional'}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">🌐 Origem:</div>
+                        <div class="value">${dadosLead.origem || 'Chat Widget - Grupo OC'}</div>
                     </div>
                     <div class="field">
                         <div class="label">📅 Data/Hora:</div>
@@ -135,6 +144,7 @@ async function enviarEmailLead(dadosLead) {
                 </div>
                 <div class="footer">
                     <p>Este email foi gerado automaticamente pelo sistema de captura de leads do Grupo OC</p>
+                    <p><strong>⚡ AÇÃO REQUERIDA:</strong> Entre em contato com o lead em até 24 horas</p>
                 </div>
             </div>
         </body>
@@ -153,8 +163,10 @@ Nome: ${dadosLead.nome || 'Não informado'}
 Email: ${dadosLead.email || 'Não informado'}
 Telefone: ${dadosLead.telefone || 'Não informado'}
 Empresa: ${dadosLead.empresa || 'Não informado'}
+CNPJ: ${dadosLead.cnpj || 'Não informado'}
 Interesse: ${dadosLead.interesse || 'Não especificado'}
 Mensagem: ${dadosLead.mensagem || 'Nenhuma mensagem adicional'}
+Origem: ${dadosLead.origem || 'Chat Widget'}
 Data/Hora: ${new Date().toLocaleString('pt-BR')}`
         };
         
@@ -185,6 +197,55 @@ const ia = new GrupoOCIA();
 // Variáveis globais
 let dadosEmpresa = null;
 let ultimoScraping = null;
+
+// ===== SISTEMA AVANÇADO DE CAPTAÇÃO DE LEADS ===== 
+// 👆 ADICIONAR AQUI (APÓS A LINHA ultimoScraping)
+
+// Palavras-chave que indicam interesse comercial
+const palavrasChaveInteresse = [
+    // Interesse direto
+    'quero', 'preciso', 'gostaria', 'interesse', 'contratar', 'solicitar',
+    'orçamento', 'proposta', 'cotação', 'valor', 'preço', 'custo',
+    
+    // Serviços específicos
+    'telefonia', 'internet', 'fibra', 'plano de saúde', 'convênio',
+    'seo', 'google ads', 'marketing', 'site', 'digital',
+    
+    // Ações comerciais
+    'falar com', 'conversar', 'reunião', 'apresentação', 'demonstração',
+    'contato', 'ligar', 'whatsapp', 'email', 'vendas',
+    
+    // Urgência
+    'urgente', 'rápido', 'hoje', 'agora', 'imediato',
+    
+    // Decisão
+    'decidir', 'escolher', 'comparar', 'avaliar', 'analisar'
+];
+
+// Função melhorada para detectar interesse
+function detectarInteresseComercial(mensagemUsuario, respostaIA) {
+    const textoCompleto = `${mensagemUsuario} ${respostaIA}`.toLowerCase();
+    
+    // Verificar palavras-chave de interesse
+    const temPalavraChave = palavrasChaveInteresse.some(palavra => 
+        textoCompleto.includes(palavra.toLowerCase())
+    );
+    
+    // Verificar se a IA mencionou serviços específicos
+    const mencionouServicos = textoCompleto.includes('oc tel') || 
+                             textoCompleto.includes('oc digital') || 
+                             textoCompleto.includes('oc saúde') ||
+                             textoCompleto.includes('consultoria') ||
+                             textoCompleto.includes('auditoria');
+    
+    // Verificar se é uma pergunta sobre como contratar
+    const perguntaContratacao = textoCompleto.includes('como') && 
+                               (textoCompleto.includes('contratar') || 
+                                textoCompleto.includes('solicitar') ||
+                                textoCompleto.includes('começar'));
+    
+    return temPalavraChave || mencionouServicos || perguntaContratacao;
+}
 
 // ===== FUNÇÕES DE SCRAPING =====
 async function aguardar(ms) {
@@ -580,7 +641,7 @@ app.post('/api/capture-lead', async (req, res) => {
     }
 });
 
-// Rota do chat
+// Rota do chat - ATUALIZADA COM DETECÇÃO DE LEADS
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, sessionId } = req.body;
@@ -594,24 +655,27 @@ app.post('/api/chat', async (req, res) => {
         }
         
         const resultado = await ia.gerarResposta(message, sessionId);
-        const deveAbrirFormulario = ia.deveAbrirFormulario(message, resultado.resposta);
+        
+        // ===== NOVA DETECÇÃO DE LEADS =====
+        const deveAbrirFormulario = detectarInteresseComercial(message, resultado.resposta);
         
         res.json({
-    success: true,
-    reply: resultado.resposta,
-    openForm: deveAbrirFormulario,
-    debug: {
-        fonteResposta: resultado.fonte,
-        fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao', // ← CORRIGIR
-        urlsColetadas: {
-            principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
-            servicos: dadosEmpresa?.metadados?.urlServicos || 'não coletada'
-        },
-        servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0, // ← ADICIONAR
-        divisoes: dadosEmpresa?.metadados?.divisoes || [], // ← ADICIONAR
-        tokens: resultado.tokens || 0
-    }
-});
+            success: true,
+            reply: resultado.resposta,
+            openForm: deveAbrirFormulario, // ← AGORA USA A NOVA FUNÇÃO
+            debug: {
+                fonteResposta: resultado.fonte,
+                fonteDados: dadosEmpresa?.metadados?.fonte || 'dados-padrao',
+                urlsColetadas: {
+                    principal: dadosEmpresa?.metadados?.urlPrincipal || 'não coletada',
+                    servicos: dadosEmpresa?.metadados?.urlServicos || 'não coletada'
+                },
+                servicosTotal: dadosEmpresa?.metadados?.servicosTotal || 0,
+                divisoes: dadosEmpresa?.metadados?.divisoes || [],
+                tokens: resultado.tokens || 0,
+                interesseDetectado: deveAbrirFormulario // ← ADICIONAR DEBUG
+            }
+        });
         
     } catch (error) {
         console.error('❌ Erro no chat:', error.message);
@@ -628,6 +692,757 @@ app.use((req, res, next) => {
   res.removeHeader('X-Content-Security-Policy');
   res.removeHeader('X-WebKit-CSP');
   next();
+});
+
+// Rota específica para o widget flutuante (APENAS O BALÃO)
+app.get('/widget', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Chat Grupo OC</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Widget Container */
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Botão de abrir chat - AZUL */
+        .chat-button {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(33, 150, 243, 0.4);
+            transition: all 0.3s ease;
+            border: none;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .chat-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(33, 150, 243, 0.6);
+        }
+        
+        .chat-button.active {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+        }
+        
+        /* Container do chat */
+        .chat-container {
+            position: absolute;
+            bottom: 80px;
+            right: 0;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .chat-container.open {
+            display: flex;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Header do chat - AZUL */
+        .chat-header {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .chat-header-info h3 {
+            font-size: 16px;
+            margin-bottom: 2px;
+        }
+        
+        .chat-header-info p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        .chat-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .chat-close:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        
+        /* Área de mensagens */
+        .chat-messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+        
+        .message {
+            margin-bottom: 12px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .message.user {
+            justify-content: flex-end;
+        }
+        
+        .message-content {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .message.bot .message-content {
+            background: #e9ecef;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+        
+        /* Mensagens do usuário - AZUL */
+        .message.user .message-content {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        /* Input area */
+        .chat-input {
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .input-group input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        /* Input focus - AZUL */
+        .input-group input:focus {
+            border-color: #2196F3;
+        }
+        
+        /* Botão enviar - AZUL */
+        .input-group button {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .input-group button:hover {
+            transform: scale(1.1);
+        }
+        
+        /* Indicador de digitação */
+        .typing {
+            display: none;
+            padding: 8px 15px;
+            font-style: italic;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        /* Mensagem de boas-vindas */
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            padding: 20px 15px;
+            font-size: 14px;
+        }
+        
+        .welcome-message h4 {
+            margin-bottom: 8px;
+            color: #2196F3;
+            font-size: 16px;
+        }
+        
+        /* Status online - AZUL */
+        .online-status {
+            width: 8px;
+            height: 8px;
+            background: #2196F3;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Responsivo */
+        @media (max-width: 480px) {
+            .chat-container {
+                width: 300px;
+                height: 450px;
+                bottom: 70px;
+                right: 10px;
+            }
+            
+            .chat-widget {
+                bottom: 15px;
+                right: 15px;
+            }
+        }
+        
+        /* Destaque azul */
+        .highlight {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        /* Formulário de Leads */
+.lead-form-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.lead-form-container {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 450px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: formSlideIn 0.3s ease;
+}
+
+@keyframes formSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.lead-form-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.lead-form-header h3 {
+    color: #2196F3;
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+.lead-form-header p {
+    color: #666;
+    font-size: 16px;
+}
+
+.lead-form-group {
+    margin-bottom: 20px;
+}
+
+.lead-form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+.lead-form-group input,
+.lead-form-group select,
+.lead-form-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.lead-form-group input:focus,
+.lead-form-group select:focus,
+.lead-form-group textarea:focus {
+    outline: none;
+    border-color: #2196F3;
+}
+
+.lead-form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.lead-form-buttons {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.lead-form-button {
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.lead-form-button.primary {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+    color: white;
+}
+
+.lead-form-button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
+}
+
+.lead-form-button.secondary {
+    background: #f8f9fa;
+    color: #666;
+    border: 2px solid #e9ecef;
+}
+
+.lead-form-button.secondary:hover {
+    background: #e9ecef;
+}
+
+.lead-form-loading {
+    display: none;
+    text-align: center;
+    padding: 20px;
+}
+
+.lead-form-success {
+    display: none;
+    text-align: center;
+    padding: 30px;
+}
+
+.lead-form-success h4 {
+    color: #28a745;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 480px) {
+    .lead-form-container {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .lead-form-buttons {
+        flex-direction: column;
+    }
+}
+    </style>
+</head>
+<body>
+    <!-- APENAS O Widget de Chat -->
+    <div class="chat-widget">
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <h3>🏢 Grupo OC</h3>
+                    <p>Assistente Online <span class="online-status"></span></p>
+                </div>
+                <button class="chat-close" onclick="toggleChat()">×</button>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <h4>Olá! 👋</h4>
+                    <p>Sou o assistente virtual do <span class="highlight">Grupo OC</span>. Como posso ajudar você hoje?</p>
+                </div>
+            </div>
+            
+            <div class="typing" id="typing">
+                Assistente está digitando...
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="messageInput" placeholder="Digite sua mensagem..." maxlength="500">
+                    <button onclick="sendMessage()">➤</button>
+                </div>
+            </div>
+        </div>
+        
+        <button class="chat-button" id="chatButton" onclick="toggleChat()">
+            💬
+        </button>
+    </div>
+
+    <!-- Formulário de Leads -->
+<div class="lead-form-overlay" id="leadFormOverlay">
+    <div class="lead-form-container">
+        <div class="lead-form-header">
+            <h3>🎯 Vamos conversar!</h3>
+            <p>Preencha seus dados e nossa equipe entrará em contato em breve</p>
+        </div>
+        
+        <form id="leadForm">
+            <div class="lead-form-group">
+                <label for="leadNome">Nome Completo *</label>
+                <input type="text" id="leadNome" name="nome" required>
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadEmail">Email Corporativo *</label>
+                <input type="email" id="leadEmail" name="email" required>
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadTelefone">Telefone/WhatsApp *</label>
+                <input type="tel" id="leadTelefone" name="telefone" required placeholder="(11) 99999-9999">
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadEmpresa">Empresa</label>
+                <input type="text" id="leadEmpresa" name="empresa" placeholder="Nome da sua empresa">
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadCNPJ">CNPJ</label>
+                <input type="text" id="leadCNPJ" name="cnpj" placeholder="00.000.000/0001-00">
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadInteresse">Principal Interesse *</label>
+                <select id="leadInteresse" name="interesse" required>
+                    <option value="">Selecione uma opção</option>
+                    <option value="OC TEL - Soluções em Telecom">OC TEL - Soluções em Telecom</option>
+                    <option value="OC DIGITAL - Marketing Digital">OC DIGITAL - Marketing Digital</option>
+                    <option value="OC SAÚDE - Planos Empresariais">OC SAÚDE - Planos Empresariais</option>
+                    <option value="Consultoria Empresarial Geral">Consultoria Empresarial Geral</option>
+                    <option value="Múltiplas Soluções">Múltiplas Soluções</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+            
+            <div class="lead-form-group">
+                <label for="leadMensagem">Mensagem Adicional</label>
+                <textarea id="leadMensagem" name="mensagem" placeholder="Conte-nos mais sobre sua necessidade..."></textarea>
+            </div>
+            
+            <div class="lead-form-buttons">
+                <button type="button" class="lead-form-button secondary" onclick="closeLeadForm()">
+                    Cancelar
+                </button>
+                <button type="submit" class="lead-form-button primary">
+                    Enviar Solicitação
+                </button>
+            </div>
+        </form>
+        
+        <div class="lead-form-loading" id="leadFormLoading">
+            <h4>📤 Enviando solicitação...</h4>
+            <p>Aguarde um momento...</p>
+        </div>
+        
+        <div class="lead-form-success" id="leadFormSuccess">
+            <h4>✅ Solicitação enviada com sucesso!</h4>
+            <p>Nossa equipe entrará em contato em breve. Obrigado pelo interesse!</p>
+            <button class="lead-form-button primary" onclick="closeLeadForm()" style="margin-top: 15px;">
+                Fechar
+            </button>
+        </div>
+    </div>
+</div>
+
+    <script>
+    const chatContainer = document.getElementById('chatContainer');
+    const chatButton = document.getElementById('chatButton');
+    const chatMessages = document.getElementById('chatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const typing = document.getElementById('typing');
+    
+    let chatOpen = false;
+    let leadFormOpen = false;
+
+    function toggleChat() {
+        chatOpen = !chatOpen;
+        
+        if (chatOpen) {
+            chatContainer.classList.add('open');
+            chatButton.classList.add('active');
+            chatButton.innerHTML = '×';
+            messageInput.focus();
+        } else {
+            chatContainer.classList.remove('open');
+            chatButton.classList.remove('active');
+            chatButton.innerHTML = '💬';
+        }
+    }
+
+    // ===== FUNÇÕES DO FORMULÁRIO DE LEADS =====
+    function openLeadForm() {
+        if (leadFormOpen) return;
+        
+        leadFormOpen = true;
+        const overlay = document.getElementById('leadFormOverlay');
+        overlay.style.display = 'flex';
+        
+        // Focar no primeiro campo
+        setTimeout(() => {
+            document.getElementById('leadNome').focus();
+        }, 300);
+    }
+
+    function closeLeadForm() {
+        leadFormOpen = false;
+        const overlay = document.getElementById('leadFormOverlay');
+        overlay.style.display = 'none';
+        
+        // Reset form
+        document.getElementById('leadForm').reset();
+        document.getElementById('leadForm').style.display = 'block';
+        document.getElementById('leadFormLoading').style.display = 'none';
+        document.getElementById('leadFormSuccess').style.display = 'none';
+    }
+
+    // Fechar formulário clicando fora
+    document.getElementById('leadFormOverlay').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeLeadForm();
+        }
+    });
+
+    // Submissão do formulário
+    document.getElementById('leadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const leadData = {
+            nome: formData.get('nome'),
+            email: formData.get('email'),
+            telefone: formData.get('telefone'),
+            empresa: formData.get('empresa'),
+            cnpj: formData.get('cnpj'),
+            interesse: formData.get('interesse'),
+            mensagem: formData.get('mensagem'),
+            origem: 'Chat Widget - Grupo OC',
+            timestamp: new Date().toISOString()
+        };
+        
+        // Mostrar loading
+        document.getElementById('leadForm').style.display = 'none';
+        document.getElementById('leadFormLoading').style.display = 'block';
+        
+        try {
+            const response = await fetch('/api/capture-lead', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(leadData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Mostrar sucesso
+                document.getElementById('leadFormLoading').style.display = 'none';
+                document.getElementById('leadFormSuccess').style.display = 'block';
+                
+                // Fechar automaticamente após 5 segundos
+                setTimeout(() => {
+                    closeLeadForm();
+                }, 5000);
+            } else {
+                throw new Error(result.error || 'Erro ao enviar solicitação');
+            }
+            
+        } catch (error) {
+            console.error('Erro ao enviar lead:', error);
+            alert('Erro ao enviar solicitação. Tente novamente.');
+            
+            // Voltar ao formulário
+            document.getElementById('leadFormLoading').style.display = 'none';
+            document.getElementById('leadForm').style.display = 'block';
+        }
+    });
+
+    // Máscara para telefone
+    document.getElementById('leadTelefone').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 11) {
+            value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            if (value.length < 14) {
+                value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+            }
+        }
+        e.target.value = value;
+    });
+
+    // Máscara para CNPJ
+    document.getElementById('leadCNPJ').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        value = value.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        e.target.value = value;
+    });
+
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+
+    function addMessage(content, isUser = false) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + (isUser ? 'user' : 'bot');
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.textContent = content;
+        
+        messageDiv.appendChild(contentDiv);
+        chatMessages.appendChild(messageDiv);
+        
+        const welcome = chatMessages.querySelector('.welcome-message');
+        if (welcome) {
+            welcome.remove();
+        }
+        
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function showTyping() {
+        typing.style.display = 'block';
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function hideTyping() {
+        typing.style.display = 'none';
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        addMessage(message, true);
+        messageInput.value = '';
+        showTyping();
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            const data = await response.json();
+            hideTyping();
+            
+            if (data.success) {
+                addMessage(data.reply);
+                
+                // Verificar se deve abrir formulário de lead
+                if (data.openForm && !leadFormOpen) {
+                    setTimeout(() => {
+                        openLeadForm();
+                    }, 1000); // Aguardar 1 segundo após a resposta
+                }
+            } else {
+                addMessage('Desculpe, ocorreu um erro. Tente novamente.');
+            }
+        } catch (error) {
+            hideTyping();
+            addMessage('Erro de conexão. Verifique sua internet e tente novamente.');
+            console.error('Erro:', error);
+        }
+    }
+
+    // Inicialização do widget
+    window.onload = function() {
+        console.log('Widget Chat Grupo OC carregado!');
+    };
+</script>
+</body>
+</html>`);
 });
 
 // Rota principal para o widget flutuante - CORES AZUIS
@@ -1117,6 +1932,7 @@ app.listen(PORT, () => {
     console.log(`�� IA: Inicializada`);
     console.log(`🕷️ Scraping: Ativo`);
 });
+
 
 
 
