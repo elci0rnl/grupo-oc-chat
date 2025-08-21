@@ -1,0 +1,21 @@
+﻿{
+  "name": "grupo-oc-chat-api",
+  "version": "1.0.0",
+  "description": "API do Chat Grupo OC para WordPress",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "pm2": "pm2 start index.js --name grupo-oc-chat"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "puppeteer": "^21.3.6",
+    "nodemailer": "^7.0.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
